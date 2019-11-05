@@ -16,6 +16,7 @@ C_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
+Z_added \
 app/bluetooth/common/util \
 . \
 hardware/kit/common/bsp \
