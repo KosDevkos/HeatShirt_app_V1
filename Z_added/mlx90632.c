@@ -32,6 +32,8 @@
 #include "mlx90632.h"
 #include "mlx90632_depends.h"
 
+
+
 #define POW10 10000000000LL
 
 #ifndef VERSION
@@ -45,24 +47,33 @@ static const char mlx90632version[] __attribute__((used)) = { VERSION };
 #endif
 
 
-static I2C_TransferReturn_TypeDef i2cReadByte(I2C_TypeDef *i2c, uint16_t addr, uint8_t command, uint8_t *val);
-extern int32_t mlx90632_i2c_read(int16_t register_address, uint16_t *value)
+//static I2C_TransferReturn_TypeDef     i2cReadByte(I2C_TypeDef *i2c, uint16_t addr,           uint8_t command,           uint8_t *val);
+extern I2C_TransferReturn_TypeDef mlx90632_i2c_read(I2C_TypeDef *i2c, uint16_t sensor_address, int16_t register_address, uint16_t *value)
 {
   I2C_TransferSeq_TypeDef    seq;
   I2C_TransferReturn_TypeDef sta;
   int32_t status;
-  uint8_t                    i2c_write_data[1];
-  uint8_t                    i2c_read_data[1];
 
-  seq.addr  = addr;
+
+  uint8_t i2c_write_data[2];
+  uint8_t i2c_read_data[2];
+
+
+  //uint8_t value_arr[2];
+  //value_arr[0] = value;
+  //value_arr[1] = value >> 8;
+
+
+  seq.addr  = sensor_address;   ////////   *   @li 7 bit address - Use format AAAA AAAX
   seq.flags = I2C_FLAG_WRITE_READ;
   /* Select command to issue */
-  i2c_write_data[0] = command;
+  i2c_write_data[0] = register_address;
+  i2c_write_data[1] = register_address >> 8;
   seq.buf[0].data   = i2c_write_data;
-  seq.buf[0].len    = 1;
+  seq.buf[0].len    = 2;
   /* Select location/length of data to be read */
   seq.buf[1].data = i2c_read_data;
-  seq.buf[1].len  = 1;
+  seq.buf[1].len  = 2;
 
   sta = I2CSPM_Transfer(i2c, &seq);
   status = sta;
@@ -70,12 +81,14 @@ extern int32_t mlx90632_i2c_read(int16_t register_address, uint16_t *value)
   {
     return status;
   }
-  if (NULL != val)
+  if (NULL != value)
   {
-    *val = i2c_read_data[0];
+    *value = i2c_read_data[0] | (i2c_read_data[1] << 8);      // NOTE POSITION, currently [0] - LBS, [1] - MBS
   }
   return status;
 }
+
+extern int32_t mlx90632_i2c_write(int16_t register_address, uint16_t value);
 
 /** Trigger start measurement for mlx90632
  *

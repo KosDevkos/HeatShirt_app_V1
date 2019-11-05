@@ -33,6 +33,15 @@
 #ifndef _MLX90632_DEPENDS_LIB_
 #define _MLX90632_DEPENDS_LIB_
 
+/* Bluetooth stack headers */
+#include "bg_types.h"
+#include "native_gecko.h"
+#include "gatt_db.h"
+
+// include I2C SPM driver header file
+#include "i2cspm.h"
+#include "em_gpio.h"
+
 
 /** Read the register_address value from the mlx90632
  *
@@ -46,39 +55,7 @@
  * @retval 0 for success
  * @retval <0 for failure
  */
-static I2C_TransferReturn_TypeDef i2cReadByte(I2C_TypeDef *i2c, uint16_t addr, uint8_t command, uint8_t *val);
-extern int32_t mlx90632_i2c_read(int16_t register_address, uint16_t *value)
-{
-  I2C_TransferSeq_TypeDef    seq;
-  I2C_TransferReturn_TypeDef sta;
-  int32_t status;
-  uint8_t                    i2c_write_data[1];
-  uint8_t                    i2c_read_data[1];
-
-  seq.addr  = addr;
-  seq.flags = I2C_FLAG_WRITE_READ;
-  /* Select command to issue */
-  i2c_write_data[0] = command;
-  seq.buf[0].data   = i2c_write_data;
-  seq.buf[0].len    = 1;
-  /* Select location/length of data to be read */
-  seq.buf[1].data = i2c_read_data;
-  seq.buf[1].len  = 1;
-
-  sta = I2CSPM_Transfer(i2c, &seq);
-  status = sta;
-  if (sta != i2cTransferDone)
-  {
-    return status;
-  }
-  if (NULL != val)
-  {
-    *val = i2c_read_data[0];
-  }
-  return status;
-}
-
-extern int32_t mlx90632_i2c_read(int16_t register_address, uint16_t *value);
+extern I2C_TransferReturn_TypeDef mlx90632_i2c_read(I2C_TypeDef *i2c, uint16_t sensor_address, int16_t register_address, uint16_t *value);
 
 
 
