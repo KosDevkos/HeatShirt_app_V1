@@ -30,10 +30,15 @@
 
 #include "app.h"
 
+#include "mlx90632.h"
+#include "mlx90632_depends.h"
+
 #define SENSOR_1    0x3A << 1
 
-///////////////// MY FUCNTIONS START HERE ////////////////
+void printTime();
 
+///////////////// MY FUCNTIONS START HERE ////////////////
+/*
 static I2C_TransferReturn_TypeDef i2cReadByte(I2C_TypeDef *i2c, uint16_t addr, uint8_t command, uint8_t *val)
 {
   I2C_TransferSeq_TypeDef    seq;
@@ -43,11 +48,11 @@ static I2C_TransferReturn_TypeDef i2cReadByte(I2C_TypeDef *i2c, uint16_t addr, u
 
   seq.addr  = addr;
   seq.flags = I2C_FLAG_WRITE_READ;
-  /* Select command to issue */
+  //* Select command to issue
   i2c_write_data[0] = command;
   seq.buf[0].data   = i2c_write_data;
   seq.buf[0].len    = 1;
-  /* Select location/length of data to be read */
+  //* Select location/length of data to be read
   seq.buf[1].data = i2c_read_data;
   seq.buf[1].len  = 1;
 
@@ -72,11 +77,11 @@ static I2C_TransferReturn_TypeDef i2cWriteByte(I2C_TypeDef *i2c, uint16_t addr, 
 
   seq.addr  = addr;
   seq.flags = I2C_FLAG_WRITE_WRITE;
-  /* Select command to issue */
+  // Select command to issue
   i2c_write_data[0] = command;
   seq.buf[0].data   = i2c_write_data;
   seq.buf[0].len    = 1;
-  /* Select location/length of data to be read */
+  // Select location/length of data to be read
   i2c_message_data[0] = message;       ///// needs additional input in function decalration
   seq.buf[1].data = i2c_message_data;
   seq.buf[1].len  = 1;
@@ -84,6 +89,8 @@ static I2C_TransferReturn_TypeDef i2cWriteByte(I2C_TypeDef *i2c, uint16_t addr, 
   sta = I2CSPM_Transfer(i2c, &seq);
   return sta;
 }
+
+
 
 void mcube_i2c_setup()
 {
@@ -158,6 +165,8 @@ void mcube_i2c_setup()
 
 }
 
+*/
+
 ///////////////// MY FUCNTIONS END HERE ////////////////
 
 /* Print boot message */
@@ -207,10 +216,82 @@ void appMain(gecko_configuration_t *pconfig)
          * The next two parameters are minimum and maximum advertising interval, both in
          * units of (milliseconds * 1.6).
          * The last two parameters are duration and maxevents left as default. */
-        gecko_cmd_le_gap_set_advertise_timing(0, 160, 160, 0, 0);
+        //gecko_cmd_le_gap_set_advertise_timing(0, 160, 160, 0, 0);
 
         /* Start general advertising and enable connections. */
-        gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
+        //gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
+
+		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
+
+
+
+		  I2CSPM_Init_TypeDef myi2cinit = I2CSPM_INIT_DEFAULT;
+		  myi2cinit.sclPort = gpioPortC;
+		  myi2cinit.sclPin = 6;
+		  myi2cinit.portLocationScl = 10;
+		  myi2cinit.sdaPort = gpioPortC;
+		  myi2cinit.sdaPin = 7;
+		  myi2cinit.portLocationSda = 12;
+
+
+
+
+		   I2CSPM_Init(&myi2cinit);
+
+
+		   I2C_TransferReturn_TypeDef transfer_status;
+
+        int16_t object_new_raw;
+		int16_t object_old_raw;
+		int16_t ambient_new_raw;
+		int16_t ambient_old_raw;
+
+
+		int32_t P_T =MLX90632_EE_P_T;
+		int32_t P_R =MLX90632_EE_P_R;
+		int32_t P_G =MLX90632_EE_P_G;
+		int32_t P_O =MLX90632_EE_P_O;
+		int16_t Gb = MLX90632_EE_Ga;
+
+		int16_t Ka =MLX90632_EE_Ka;
+
+		int32_t Ea =MLX90632_EE_Ea;
+		int32_t Eb =MLX90632_EE_Eb;
+		int32_t Ga =MLX90632_EE_Ga;
+		int32_t Fa =MLX90632_EE_Fa;
+		int32_t Fb =MLX90632_EE_Fb;
+		int16_t Ha =MLX90632_EE_Ha;
+		int16_t Hb =MLX90632_EE_Hb;
+
+
+        int32_t ret = 0;
+        double ambient;
+        double object;
+        /* Read sensor EEPROM registers needed for calcualtions */
+        /* Now we read current ambient and object temperature */
+        while(1){
+			ret = mlx90632_read_temp_raw(&ambient_new_raw, &ambient_old_raw,
+										 &object_new_raw, &object_old_raw);
+			if(ret < 0){
+				/* Something went wrong - abort */
+				printLog("error is : %ld\n\r", ret);
+			}
+			/* Now start calculations (no more i2c accesses) */
+			/* Calculate ambient temperature */
+			ambient = mlx90632_calc_temp_ambient(ambient_new_raw, ambient_old_raw,P_T, P_R, P_G, P_O, Gb);
+			/* Get preprocessed temperatures needed for object temperature calculation */
+			double pre_ambient = mlx90632_preprocess_temp_ambient(ambient_new_raw, ambient_old_raw, Gb);
+			double pre_object = mlx90632_preprocess_temp_object(object_new_raw, object_old_raw,ambient_new_raw, ambient_old_raw,Ka);
+			/* Calculate object temperature */
+			object = mlx90632_calc_temp_object(pre_object, pre_ambient, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
+			printLog("ambient is : %f\n\r", ambient);
+			printLog("object is : %f\n\r", object);
+        }
+
+
+
+
+
         break;
 
       case gecko_evt_le_connection_opened_id:
@@ -279,3 +360,5 @@ static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt)
   printLog("%2.2x\r\n", local_addr.addr[0]);
 #endif
 }
+
+

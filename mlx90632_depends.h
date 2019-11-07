@@ -72,7 +72,8 @@ extern I2C_TransferReturn_TypeDef mlx90632_i2c_read(I2C_TypeDef *i2c, uint16_t s
  * @retval <0 for failure
  */
 
-extern int32_t mlx90632_i2c_write(int16_t register_address, uint16_t value);
+extern int32_t mlx90632_i2c_write(I2C_TypeDef *i2c, uint16_t sensor_address, int16_t register_address, uint16_t value);
+//extern int32_t mlx90632_i2c_write(int16_t register_address, uint16_t value);
 
 /** Blocking function for sleeping in microseconds
  *
