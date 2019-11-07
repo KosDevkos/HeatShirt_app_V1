@@ -19,6 +19,28 @@
  *
  ******************************************************************************/
 
+
+/* MY PROGRESS
+ *
+ * Changed DEBUG_LEVEL to 1 in app.h
+ *
+ * Added I2CSPM.c
+ *
+ * initialized I2C in app.c
+ *
+ * Added mlx90632.c, mlx90632.h, mlx90632_depends.h
+ *
+ * Wrote functions mlx90632_i2c_read(), mlx90632_i2c_write() [adapted from 8bit to 16bit] and a temporary usleep() to mlx90632.c
+ *
+ * Downloaded constants from the sensor
+ *
+ * Changed BITS_PER_LONG to 32 in mlx90632.h
+ *
+ * Made the compiler printLof() floats in the project
+ *
+ */
+
+
 /* Bluetooth stack headers */
 #include "bg_types.h"
 #include "native_gecko.h"
@@ -37,137 +59,7 @@
 
 void printTime();
 
-///////////////// MY FUCNTIONS START HERE ////////////////
-/*
-static I2C_TransferReturn_TypeDef i2cReadByte(I2C_TypeDef *i2c, uint16_t addr, uint8_t command, uint8_t *val)
-{
-  I2C_TransferSeq_TypeDef    seq;
-  I2C_TransferReturn_TypeDef sta;
-  uint8_t                    i2c_write_data[1];
-  uint8_t                    i2c_read_data[1];
 
-  seq.addr  = addr;
-  seq.flags = I2C_FLAG_WRITE_READ;
-  //* Select command to issue
-  i2c_write_data[0] = command;
-  seq.buf[0].data   = i2c_write_data;
-  seq.buf[0].len    = 1;
-  //* Select location/length of data to be read
-  seq.buf[1].data = i2c_read_data;
-  seq.buf[1].len  = 1;
-
-  sta = I2CSPM_Transfer(i2c, &seq);
-  if (sta != i2cTransferDone)
-  {
-    return sta;
-  }
-  if (NULL != val)
-  {
-    *val = i2c_read_data[0];
-  }
-  return sta;
-}
-
-static I2C_TransferReturn_TypeDef i2cWriteByte(I2C_TypeDef *i2c, uint16_t addr, uint8_t command, uint8_t message)
-{
-  I2C_TransferSeq_TypeDef    seq;
-  I2C_TransferReturn_TypeDef sta;
-  uint8_t                    i2c_write_data[1];
-  uint8_t                    i2c_message_data[1];
-
-  seq.addr  = addr;
-  seq.flags = I2C_FLAG_WRITE_WRITE;
-  // Select command to issue
-  i2c_write_data[0] = command;
-  seq.buf[0].data   = i2c_write_data;
-  seq.buf[0].len    = 1;
-  // Select location/length of data to be read
-  i2c_message_data[0] = message;       ///// needs additional input in function decalration
-  seq.buf[1].data = i2c_message_data;
-  seq.buf[1].len  = 1;
-
-  sta = I2CSPM_Transfer(i2c, &seq);
-  return sta;
-}
-
-
-
-void mcube_i2c_setup()
-{
-	  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
-
-
-
-	  I2CSPM_Init_TypeDef myi2cinit = I2CSPM_INIT_DEFAULT;
-	  myi2cinit.sclPort = gpioPortC;
-	  myi2cinit.sclPin = 6;
-	  myi2cinit.portLocationScl = 10;
-	  myi2cinit.sdaPort = gpioPortC;
-	  myi2cinit.sdaPin = 7;
-	  myi2cinit.portLocationSda = 12;
-
-
-
-
-	   I2CSPM_Init(&myi2cinit);
-
-
-	   I2C_TransferReturn_TypeDef transfer_status;
-
-
-
-
-	   uint16_t Device_ID = 	SENSOR_1;		  ///  Contains the Device ID
-
-	   uint8_t command_1 = 0x0D;  //1
-	   uint8_t  message_1 = 0x40;
-
-	   uint8_t command_2 = 0x0F ; //2
-	   uint8_t  message_2 = 0x42;
-
-	   uint8_t command_3 = 0x20;   //3
-	   uint8_t  message_3 = 0x01;
-
-	   uint8_t command_4 = 0x21 ;  ///4
-	   uint8_t  message_4 = 0x80;
-
-	   uint8_t command_5 = 0x28;   ///5
-	   uint8_t  message_5 = 0x00;
-
-	   uint8_t command_6 = 0x1A;    ///6
-	   uint8_t  message_6 = 0x00;
-
-	   uint8_t command_7 = 0x1C ;  ///7
-	   uint8_t message_7 = 0x03;
-
-	   uint8_t command_8 = 0x15;   ///8
-	   uint8_t  message_8 = 0x15;
-
-	   uint8_t command_9 = 0x11;   ///9
-	   uint8_t  message_9 = 0x08;
-
-	   uint8_t command_10 = 0x10;  ///10
-	    uint8_t  message_10 = 0x05;
-
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_1, message_1);  //1
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_2, message_2);  //2
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_3, message_3);  //3
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_4, message_4);  //4
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_5, message_5);  //5
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_6, message_6);  //6
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_7, message_7);  //7
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_8, message_8);  //8
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_9, message_9);  //9
-	  transfer_status = i2cWriteByte(I2C0,Device_ID, command_10, message_10);  //10
-
-	  for(volatile long i=0; i<100000; i++);  ///delay to allow registers to update properly
-
-
-}
-
-*/
-
-///////////////// MY FUCNTIONS END HERE ////////////////
 
 /* Print boot message */
 static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt);
@@ -239,29 +131,117 @@ void appMain(gecko_configuration_t *pconfig)
 		   I2CSPM_Init(&myi2cinit);
 
 
-		   I2C_TransferReturn_TypeDef transfer_status;
+		I2C_TransferReturn_TypeDef transfer_status;
 
         int16_t object_new_raw;
 		int16_t object_old_raw;
 		int16_t ambient_new_raw;
 		int16_t ambient_old_raw;
 
+		usleep(10000,1);
 
-		int32_t P_T =MLX90632_EE_P_T;
-		int32_t P_R =MLX90632_EE_P_R;
-		int32_t P_G =MLX90632_EE_P_G;
-		int32_t P_O =MLX90632_EE_P_O;
-		int16_t Gb = MLX90632_EE_Ga;
+		int32_t P_T;
+		uint16_t P_T_MS;
+		uint16_t P_T_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_T, &P_T_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_T+1, &P_T_MS);
+		P_T = (P_T_MS <<16) | P_T_LS;
+		printLog("	P_T is %ld or %X\n\n\r",P_T,P_T);
 
-		int16_t Ka =MLX90632_EE_Ka;
 
-		int32_t Ea =MLX90632_EE_Ea;
-		int32_t Eb =MLX90632_EE_Eb;
-		int32_t Ga =MLX90632_EE_Ga;
-		int32_t Fa =MLX90632_EE_Fa;
-		int32_t Fb =MLX90632_EE_Fb;
-		int16_t Ha =MLX90632_EE_Ha;
-		int16_t Hb =MLX90632_EE_Hb;
+		int32_t P_R;
+		uint16_t P_R_MS;
+		uint16_t P_R_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_R, &P_R_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_R +1, &P_R_MS);
+		P_R = (P_R_MS <<16) | P_R_LS;
+		printLog("	P_R is %ld or %X\n\n\r",P_R,P_R);
+
+		int32_t P_G ;
+		uint16_t P_G_MS;
+		uint16_t P_G_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_G, &P_G_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_G + 1, &P_G_MS);
+		P_G = (P_G_MS <<16) | P_G_LS;
+		printLog("	P_G is %ld or %X\n\n\r",P_G,P_G);
+
+		int32_t P_O ;
+		uint16_t P_O_MS;
+		uint16_t P_O_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_O, &P_O_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_O+1, &P_O_MS);
+		P_O = (P_O_MS <<16) | P_O_LS;
+		printLog("	P_O is %ld or %X\n\n\r",P_O,P_O);
+
+		uint16_t Gb_UINT;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Gb, &Gb_UINT);
+		int16_t Gb = Gb_UINT;
+		printLog("	Gb is %d or %X\n\n\r",Gb,Gb);
+
+		uint16_t Ka_UINT ;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ka, &Ka_UINT);
+		int16_t Ka = Ka_UINT;
+		printLog("	Ka is %d or %X\n\n\r",Ka,Ka);
+
+		int32_t Ea ;
+		uint16_t Ea_MS;
+		uint16_t Ea_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ea, &Ea_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ea+1, &Ea_MS);
+		Ea = (Ea_MS <<16) | Ea_LS;
+		printLog("	Ea is %ld or %X\n\n\r",Ea,Ea);
+
+		int32_t Eb ;
+		uint16_t Eb_MS;
+		uint16_t Eb_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Eb, &Eb_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Eb+1, &Eb_MS);
+		Eb = (Eb_MS <<16) | Eb_LS;
+		printLog("	Eb is %ld or %X\n\n\r",Eb,Eb);
+
+		int32_t Ga ;
+		uint16_t Ga_MS;
+		uint16_t Ga_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ga, &Ga_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ga+1, &Ga_MS);
+		Ga = (Ga_MS <<16) | Ga_LS;
+		printLog("	Ga is %ld or %X\n\n\r",Ga,Ga);
+
+		int32_t Fa ;
+		uint16_t Fa_MS;
+		uint16_t Fa_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fa, &Fa_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fa+1, &Fa_MS);
+		Fa = (Fa_MS <<16) | Fa_LS;
+		printLog("	Fa is %ld or %X\n\n\r",Fa,Fa);
+
+		int32_t Fb ;
+		uint16_t Fb_MS;
+		uint16_t Fb_LS;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fb, &Fb_LS);
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fb+1, &Fb_MS);
+		Fb = (Fb_MS <<16) | Fb_LS;
+		printLog("	Fb is %ld or %X\n\n\r",Fb,Fb);
+
+		uint16_t Ha_UINT ;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ha, &Ha_UINT);
+		uint16_t Ha = Ha_UINT;
+		printLog("	Ha is %d or %X\n\n\r",Ha,Ha);
+
+		uint16_t Hb_UINT ;
+		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Hb, &Hb_UINT);
+		int16_t Hb = Hb_UINT;
+		printLog("	Hb is %d or %X\n\n\r",Hb,Hb);
+
+		printLog("Im in app.c\n\n\r");
+
+	    uint16_t reg_status;
+
+	    /// ADDING ONE BIT TO A STATUS REGISTER??????????
+	    mlx90632_i2c_read(I2C0,Device_ID,MLX90632_REG_STATUS, &reg_status);
+			//printLog("Im in mlx90632_start_measurement - REG_STATUS_1 IS: %x\n\n\r",reg_status);
+	    mlx90632_i2c_write(I2C0,Device_ID,MLX90632_REG_STATUS, reg_status | 0x0100);
+
 
 
         int32_t ret = 0;
@@ -278,14 +258,16 @@ void appMain(gecko_configuration_t *pconfig)
 			}
 			/* Now start calculations (no more i2c accesses) */
 			/* Calculate ambient temperature */
+					//printLog("ambient_new_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_new_raw,ambient_new_raw);
+					//printLog("ambient_old_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_old_raw,ambient_old_raw);
+
 			ambient = mlx90632_calc_temp_ambient(ambient_new_raw, ambient_old_raw,P_T, P_R, P_G, P_O, Gb);
 			/* Get preprocessed temperatures needed for object temperature calculation */
 			double pre_ambient = mlx90632_preprocess_temp_ambient(ambient_new_raw, ambient_old_raw, Gb);
 			double pre_object = mlx90632_preprocess_temp_object(object_new_raw, object_old_raw,ambient_new_raw, ambient_old_raw,Ka);
 			/* Calculate object temperature */
 			object = mlx90632_calc_temp_object(pre_object, pre_ambient, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
-			printLog("ambient is : %f\n\r", ambient);
-			printLog("object is : %f\n\r", object);
+			printLog("ambient is : %f\    object is : %f\n\r", ambient,object);
         }
 
 

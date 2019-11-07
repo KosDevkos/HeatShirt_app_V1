@@ -67,6 +67,7 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0])) /**< Return number of elements in array */
 #endif
 
+
 /* Memory sections addresses */
 #define MLX90632_ADDR_RAM   0x4000 /**< Start address of ram */
 #define MLX90632_ADDR_EEPROM    0x2480 /**< Start address of user eeprom */

@@ -35,7 +35,7 @@
 #include "app.h"
 
 
-#define Device_ID 0x3A << 1
+
 
 #define POW10 10000000000LL
 
@@ -59,7 +59,7 @@ extern void usleep(int min_range, int max_range){
 extern I2C_TransferReturn_TypeDef mlx90632_i2c_read(I2C_TypeDef *i2c, uint16_t sensor_address, int16_t register_address, uint16_t *value)
 {
 
-	printLog("Im in mlx90632_i2c_read\n\n\r");
+		//printLog("Im in mlx90632_i2c_read\n\n\r");
 
   I2C_TransferSeq_TypeDef    seq;
   I2C_TransferReturn_TypeDef sta;
@@ -99,7 +99,7 @@ extern I2C_TransferReturn_TypeDef mlx90632_i2c_read(I2C_TypeDef *i2c, uint16_t s
 
 extern int32_t mlx90632_i2c_write(I2C_TypeDef *i2c, uint16_t sensor_address, int16_t register_address, uint16_t value){
 
-	 printLog("Im in mlx90632_i2c_write\n\n\r");
+	  	  //printLog("Im in mlx90632_i2c_write\n\n\r");
 
 
 	  I2C_TransferSeq_TypeDef    seq;
@@ -135,18 +135,13 @@ extern int32_t mlx90632_i2c_write(I2C_TypeDef *i2c, uint16_t sensor_address, int
  */
 STATIC int mlx90632_start_measurement(void)
 {
-	printLog("Im in mlx90632_start_measurement\n\n\r");
+		//printLog("Im in mlx90632_start_measurement\n\n\r");
     int ret, tries = 100; /////// change to I2C_TransferReturn_TypeDef
     uint16_t reg_status;
 
 
-    ret = mlx90632_i2c_write(I2C0,Device_ID,0x3005, 0x0006);
-    usleep(1000, 1100);
-    ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_REG_I2C_ADDR, &reg_status);
-    printLog("Im in mlx90632_start_measurement - MLX90632_REG_I2C_ADDR IS: %x\n\n\r",reg_status);
-
     ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_REG_STATUS, &reg_status);
-    printLog("Im in mlx90632_start_measurement - REG_STATUS_1 IS: %x\n\n\r",reg_status);
+    	//printLog("Im in mlx90632_start_measurement - REG_STATUS_1 IS: %x\n\n\r",reg_status);
     if (ret < 0)
         return ret;
 
@@ -158,9 +153,9 @@ STATIC int mlx90632_start_measurement(void)
     while (tries-- > 0)
     {
 
-    	printLog("Im in THAT TERRIBLE LOOP IN mlx90632_start_measurement\n\n\r");
+    		//printLog("Im in THAT TERRIBLE LOOP IN mlx90632_start_measurement\n\n\r");
         ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_REG_STATUS, &reg_status);
-        printLog("Im in mlx90632_start_measurement - REG_STATUS_2 IS: %x\n\n\r",reg_status);
+        	//printLog("Im in mlx90632_start_measurement - REG_STATUS_2 IS: %x\n\n\r",reg_status);
         if (ret < 0)
             return ret;
         if (reg_status & MLX90632_STAT_DATA_RDY)
@@ -177,8 +172,8 @@ STATIC int mlx90632_start_measurement(void)
         // data not ready
         return -ETIMEDOUT;
     }
-    printLog("Im in mlx90632_start_measurement - MLX90632_STAT_CYCLE_POS IS: %x\n\n\r", MLX90632_STAT_CYCLE_POS);
-    printLog("Im in mlx90632_start_measurement - REG_STATUS_3 IS: %x\n\n\r",(reg_status & MLX90632_STAT_CYCLE_POS) >> 2);
+    	//printLog("Im in mlx90632_start_measurement - MLX90632_STAT_CYCLE_POS IS: %x\n\n\r", MLX90632_STAT_CYCLE_POS);
+    	//printLog("Im in mlx90632_start_measurement - REG_STATUS_3 IS: %x\n\n\r",(reg_status & MLX90632_STAT_CYCLE_POS) >> 2);
     return (reg_status & MLX90632_STAT_CYCLE_POS) >> 2;
 }
 
@@ -198,7 +193,7 @@ STATIC int mlx90632_start_measurement(void)
  */
 static int32_t mlx90632_channel_new_select(int32_t ret, uint8_t *channel_new, uint8_t *channel_old)
 {
-	printLog("Im in mlx90632_channel_new_select\n\n\r");
+		//printLog("Im in mlx90632_channel_new_select\n\n\r");
 
     switch (ret)
     {
@@ -233,18 +228,20 @@ static int32_t mlx90632_channel_new_select(int32_t ret, uint8_t *channel_new, ui
  */
 STATIC int32_t mlx90632_read_temp_ambient_raw(int16_t *ambient_new_raw, int16_t *ambient_old_raw)
 {
-	printLog("Im in mlx90632_read_temp_ambient_raw\n\n\r");
+		//printLog("Im in mlx90632_read_temp_ambient_raw\n\n\r");
     int32_t ret;  /////// change to I2C_TransferReturn_TypeDef
     uint16_t read_tmp;
 
     ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_RAM_3(1), &read_tmp);
-    printLog("ret in mlx90632_i2c_read()- MLX90632_RAM_3(1) is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_i2c_read()- MLX90632_RAM_3(1) is %ld\n\n\r",ret);
+    	//printLog("read_tmp in mlx90632_i2c_read()- MLX90632_RAM_3(1)/ambient_new_raw is %d or %x\n\n\r",read_tmp,read_tmp);
     if (ret < 0)
         return ret;
     *ambient_new_raw = (int16_t)read_tmp;
 
     ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_RAM_3(2), &read_tmp);
-    printLog("ret in mlx90632_i2c_read()- MLX90632_RAM_3(2) is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_i2c_read()- MLX90632_RAM_3(2) is %ld\n\n\r",ret);
+    	//printLog("read_tmp in mlx90632_i2c_read()- MLX90632_RAM_3(2)/ambient_new_raw is %d or %x\n\n\r",read_tmp,read_tmp);
     if (ret < 0)
         return ret;
     *ambient_old_raw = (int16_t)read_tmp;
@@ -269,41 +266,49 @@ STATIC int32_t mlx90632_read_temp_ambient_raw(int16_t *ambient_new_raw, int16_t 
 STATIC int32_t mlx90632_read_temp_object_raw(int32_t start_measurement_ret,
                                              int16_t *object_new_raw, int16_t *object_old_raw)
 {
-	printLog("Im in mlx90632_read_temp_object_raw\n\n\r");
+		//printLog("Im in mlx90632_read_temp_object_raw\n\n\r");
     int32_t ret;
     uint16_t read_tmp;
     int16_t read;
     uint8_t channel, channel_old;
 
     ret = mlx90632_channel_new_select(start_measurement_ret, &channel, &channel_old);
-    printLog("ret in mlx90632_read_temp_object_raw()- mlx90632_channel_new_select is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_read_temp_object_raw()- channel is %d\n\n\r",channel);
+    	//printLog("mlx90632_read_temp_object_raw()- channel_old is %d\n\n\r",channel_old);
     if (ret != 0)
         return -EINVAL;
 
     ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_RAM_2(channel), &read_tmp);
-    printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_2(channel) is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_2(channel) is %ld\n\n\r",ret);
+    	//printLog("read_tmp in mlx90632_read_temp_object_raw()- MLX90632_RAM_2(channel) is %d or %x\n\n\r",read_tmp,read_tmp);
     if (ret < 0)
         return ret;
 
     read = (int16_t)read_tmp;
 
     ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_RAM_1(channel), &read_tmp);
-    printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_1(channel) is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_1(channel) is %ld\n\n\r",ret);
+    	//printLog("read_tmp in mlx90632_read_temp_object_raw()- MLX90632_RAM_1(channel) is %d or %x\n\n\r",read_tmp,read_tmp);
     if (ret < 0)
         return ret;
     *object_new_raw = (read + (int16_t)read_tmp) / 2;
+    	//printLog("	object_new_raw in mlx90632_read_temp_object_raw() is %d or %x\n\n\r",object_new_raw,object_new_raw);
 
     ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_RAM_2(channel_old), &read_tmp);
-    printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_2(channel_old) is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_2(channel_old) is %ld\n\n\r",ret);
+    	//printLog("read_tmp in mlx90632_read_temp_object_raw()- MLX90632_RAM_2(channel_old) is %d or %x\n\n\r",read_tmp,read_tmp);
     if (ret < 0)
         return ret;
     read = (int16_t)read_tmp;
 
     ret = mlx90632_i2c_read(I2C0,Device_ID,MLX90632_RAM_1(channel_old), &read_tmp);
-    printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_1(channel_old) is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_read_temp_object_raw()- MLX90632_RAM_1(channel_old) is %ld\n\n\r",ret);
+    	//printLog("read_tmp in mlx90632_read_temp_object_raw()- MLX90632_RAM_1(channel_old) is %d or %x\n\n\r",read_tmp,read_tmp);
     if (ret < 0)
         return ret;
     *object_old_raw = (read + (int16_t)read_tmp) / 2;
+    	//printLog("	object_old_raw in mlx90632_read_temp_object_raw() is %d or %x\n\n\r",object_old_raw,object_old_raw);
+
 
     return ret;
 }
@@ -311,12 +316,12 @@ STATIC int32_t mlx90632_read_temp_object_raw(int32_t start_measurement_ret,
 int32_t mlx90632_read_temp_raw(int16_t *ambient_new_raw, int16_t *ambient_old_raw,
                                int16_t *object_new_raw, int16_t *object_old_raw)
 {
-	printLog("Im in mlx90632_read_temp_raw\n\n\r");
+		//printLog("Im in mlx90632_read_temp_raw\n\n\r");
     int32_t ret, start_measurement_ret;
 
     // trigger and wait for measurement to complete
     start_measurement_ret = mlx90632_start_measurement();
-    printLog("Im in mlx90632_read_temp_raw - start_measurement_ret IS: %ld\n\n\r",start_measurement_ret);
+    	//printLog("Im in mlx90632_read_temp_raw - start_measurement_ret IS: %ld\n\n\r",start_measurement_ret);
     if (start_measurement_ret < 0)
         return start_measurement_ret;
 
@@ -324,10 +329,10 @@ int32_t mlx90632_read_temp_raw(int16_t *ambient_new_raw, int16_t *ambient_old_ra
     ret = mlx90632_read_temp_ambient_raw(ambient_new_raw, ambient_old_raw);
     if (ret < 0)
         return ret;
-    printLog("ret in mlx90632_read_temp_raw()- after ambient is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_read_temp_raw()- after ambient is %ld\n\n\r",ret);
     /** Read new and old **object** values from sensor */
     ret = mlx90632_read_temp_object_raw(start_measurement_ret, object_new_raw, object_old_raw);
-    printLog("ret in mlx90632_read_temp_raw()- after object is %ld\n\n\r",ret);
+    	//printLog("ret in mlx90632_read_temp_raw()- after object is %ld\n\n\r",ret);
     return ret;
 }
 
@@ -357,6 +362,7 @@ double mlx90632_preprocess_temp_object(int16_t object_new_raw, int16_t object_ol
 double mlx90632_calc_temp_ambient(int16_t ambient_new_raw, int16_t ambient_old_raw, int32_t P_T,
                                   int32_t P_R, int32_t P_G, int32_t P_O, int16_t Gb)
 {
+
     double Asub, Bsub, Ablock, Bblock, Cblock, AMB;
 
     AMB = mlx90632_preprocess_temp_ambient(ambient_new_raw, ambient_old_raw, Gb);
@@ -366,7 +372,6 @@ double mlx90632_calc_temp_ambient(int16_t ambient_new_raw, int16_t ambient_old_r
     Ablock = Asub * (Bsub * Bsub);
     Bblock = (Bsub / (double)P_G) * (double)1048576.0;
     Cblock = (double)P_O / (double)256.0;
-
     return Bblock + Ablock + Cblock;
 }
 
