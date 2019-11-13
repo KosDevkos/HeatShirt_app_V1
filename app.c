@@ -108,10 +108,9 @@ void appMain(gecko_configuration_t *pconfig)
          * The next two parameters are minimum and maximum advertising interval, both in
          * units of (milliseconds * 1.6).
          * The last two parameters are duration and maxevents left as default. */
-        //gecko_cmd_le_gap_set_advertise_timing(0, 160, 160, 0, 0);
+        gecko_cmd_le_gap_set_advertise_timing(0, 160, 160, 0, 0);
 
-        /* Start general advertising and enable connections. */
-        //gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
+
 
 		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
 
@@ -247,31 +246,13 @@ void appMain(gecko_configuration_t *pconfig)
         int32_t ret = 0;
         double ambient;
         double object;
-        /* Read sensor EEPROM registers needed for calcualtions */
-        /* Now we read current ambient and object temperature */
-        while(1){
-			ret = mlx90632_read_temp_raw(&ambient_new_raw, &ambient_old_raw,
-										 &object_new_raw, &object_old_raw);
-			if(ret < 0){
-				/* Something went wrong - abort */
-				printLog("error is : %ld\n\r", ret);
-			}
-			/* Now start calculations (no more i2c accesses) */
-			/* Calculate ambient temperature */
-					//printLog("ambient_new_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_new_raw,ambient_new_raw);
-					//printLog("ambient_old_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_old_raw,ambient_old_raw);
-
-			ambient = mlx90632_calc_temp_ambient(ambient_new_raw, ambient_old_raw,P_T, P_R, P_G, P_O, Gb);
-			/* Get preprocessed temperatures needed for object temperature calculation */
-			double pre_ambient = mlx90632_preprocess_temp_ambient(ambient_new_raw, ambient_old_raw, Gb);
-			double pre_object = mlx90632_preprocess_temp_object(object_new_raw, object_old_raw,ambient_new_raw, ambient_old_raw,Ka);
-			/* Calculate object temperature */
-			object = mlx90632_calc_temp_object(pre_object, pre_ambient, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
-			printLog("ambient is : %f\    object is : %f\n\r", ambient,object);
-        }
+        uint8_t ambient_hex[1];
+        uint8_t object_hex[1];
 
 
 
+        /* Start general advertising and enable connections. */
+        gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
 
 
         break;
@@ -280,7 +261,51 @@ void appMain(gecko_configuration_t *pconfig)
 
         printLog("connection opened\r\n");
 
+        gecko_cmd_hardware_set_soft_timer(40000,0,0);
+
+        /* Read sensor EEPROM registers needed for calcualtions */
+        /* Now we read current ambient and object temperature */
+
+
         break;
+
+      case gecko_evt_hardware_soft_timer_id:
+
+        if (evt->data.evt_hardware_soft_timer.handle == 0) {
+
+        				ret = mlx90632_read_temp_raw(&ambient_new_raw, &ambient_old_raw,
+        											 &object_new_raw, &object_old_raw);
+        				if(ret < 0){
+        					/* Something went wrong - abort */
+        					printLog("error is : %ld\n\r", ret);
+        				}
+        				/* Now start calculations (no more i2c accesses) */
+        				/* Calculate ambient temperature */
+        						//printLog("ambient_new_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_new_raw,ambient_new_raw);
+        						//printLog("ambient_old_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_old_raw,ambient_old_raw);
+
+        				ambient = mlx90632_calc_temp_ambient(ambient_new_raw, ambient_old_raw,P_T, P_R, P_G, P_O, Gb);
+        				/* Get preprocessed temperatures needed for object temperature calculation */
+        				double pre_ambient = mlx90632_preprocess_temp_ambient(ambient_new_raw, ambient_old_raw, Gb);
+        				double pre_object = mlx90632_preprocess_temp_object(object_new_raw, object_old_raw,ambient_new_raw, ambient_old_raw,Ka);
+        				/* Calculate object temperature */
+        				object = mlx90632_calc_temp_object(pre_object, pre_ambient, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
+        				printLog("ambient is : %f - %x    object is : %f - %x \n\r", ambient,ambient,object,object);
+        				printLog("int ambient is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
+
+						 ambient_hex[0] = ((int) ambient >> (8*0)) & 0xFF;
+						 printLog("ambient_hex is : %x\n\r", ambient_hex);
+
+						 object_hex[0] = ((int) object >> (8*0)) & 0xFF;
+						 printLog("object_hex  is : %x\n\r", object_hex);
+
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic, 1, (const uint8*)&ambient_hex);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic, 1, (const uint8*)&object_hex);
+
+
+        }
+        break;
+
 
       case gecko_evt_le_connection_closed_id:
 

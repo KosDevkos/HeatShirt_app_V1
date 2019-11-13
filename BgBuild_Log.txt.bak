@@ -1,0 +1,13 @@
+// Copyright 2019 Silicon Laboratories, Inc.
+//
+//
+
+Executing: bgbuild (/Applications/Simplicity Studio.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v2.6/protocol/bluetooth/bin/bgbuild)
+Standard output
+ALL OK
+
+Error/Warning output
+WARNING: 4cd89f16d93e4a3eb46700e514a40d2e length attribute is 2 but actual value length is 1. 2 will be used.
+WARNING: 7352ee73925d414294a3cfe4ace393ae length attribute is 2 but actual value length is 1. 2 will be used.
+
+
