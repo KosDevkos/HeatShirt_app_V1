@@ -73,12 +73,12 @@ appPlugin: stack_bridge=false
     <informativeText>Custom service</informativeText>
     <characteristic id="Ambient_characteristic" name="Ambient" sourceId="custom.type" uuid="4cd89f16-d93e-4a3e-b467-00e514a40d2e">
       <informativeText>Custom characteristic</informativeText>
-      <value length="1" type="hex" variable_length="false">0x00</value>
+      <value length="3" type="hex" variable_length="false">0x00</value>
       <properties notify="true" notify_requirement="optional"/>
     </characteristic>
     <characteristic id="Object_characteristic" name="Object" sourceId="custom.type" uuid="7352ee73-925d-4142-94a3-cfe4ace393ae">
       <informativeText>Custom characteristic</informativeText>
-      <value length="1" type="hex" variable_length="false">0x00</value>
+      <value length="3" type="hex" variable_length="false">0x00</value>
       <properties notify="true" notify_requirement="optional"/>
     </characteristic>
   </service>

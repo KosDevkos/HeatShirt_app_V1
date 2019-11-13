@@ -53,11 +53,11 @@ GATT_DATA(const uint8_t bg_gattdb_data_uuidtable_128_map [])=
 
 
 
-uint8_t bg_gattdb_data_attribute_field_28_data[2]={0x00,0x00,};
+uint8_t bg_gattdb_data_attribute_field_28_data[1]={0x00,};
 GATT_DATA(const struct bg_gattdb_attribute_chrvalue	bg_gattdb_data_attribute_field_28 ) = {
 	.properties=0x10,
 	.index=6,
-	.max_len=2,
+	.max_len=1,
 	.data=bg_gattdb_data_attribute_field_28_data,
 };
 
@@ -65,11 +65,11 @@ GATT_DATA(const struct bg_gattdb_buffer_with_len	bg_gattdb_data_attribute_field_
 	.len=19,
 	.data={0x10,0x1d,0x00,0xae,0x93,0xe3,0xac,0xe4,0xcf,0xa3,0x94,0x42,0x41,0x5d,0x92,0x73,0xee,0x52,0x73,}
 };
-uint8_t bg_gattdb_data_attribute_field_25_data[2]={0x00,0x00,};
+uint8_t bg_gattdb_data_attribute_field_25_data[1]={0x00,};
 GATT_DATA(const struct bg_gattdb_attribute_chrvalue	bg_gattdb_data_attribute_field_25 ) = {
 	.properties=0x10,
 	.index=5,
-	.max_len=2,
+	.max_len=1,
 	.data=bg_gattdb_data_attribute_field_25_data,
 };
 

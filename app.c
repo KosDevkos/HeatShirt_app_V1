@@ -55,6 +55,10 @@
 #include "mlx90632.h"
 #include "mlx90632_depends.h"
 
+#include "math.h"
+
+
+
 #define SENSOR_1    0x3A << 1
 
 void printTime();
@@ -246,8 +250,8 @@ void appMain(gecko_configuration_t *pconfig)
         int32_t ret = 0;
         double ambient;
         double object;
-        uint8_t ambient_hex[1];
-        uint8_t object_hex[1];
+        uint8_t ambient_hex[3];
+        uint8_t object_hex[3];
 
 
 
@@ -293,14 +297,55 @@ void appMain(gecko_configuration_t *pconfig)
         				printLog("ambient is : %f - %x    object is : %f - %x \n\r", ambient,ambient,object,object);
         				printLog("int ambient is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
-						 ambient_hex[0] = ((int) ambient >> (8*0)) & 0xFF;
-						 printLog("ambient_hex is : %x\n\r", ambient_hex);
 
-						 object_hex[0] = ((int) object >> (8*0)) & 0xFF;
-						 printLog("object_hex  is : %x\n\r", object_hex);
 
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic, 1, (const uint8*)&ambient_hex);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic, 1, (const uint8*)&object_hex);
+        				printLog("initial ambient is %f or %x\n\r",ambient,ambient);
+        				double ambient_remainder = modf(ambient,&ambient);
+        				int16_t ambient_int;
+        				uint8_t ambient_remainder_Uint;
+
+
+        				ambient_int = (int16_t)ambient;
+        				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
+        				///// then get the absolute value
+        				ambient_remainder_Uint = abs((uint8_t) (ambient_remainder*100));
+
+        				printLog("ambient is %f or %x\n\r",ambient,ambient);
+        				printLog("ambient remainder is %f or %x\n\r",ambient_remainder,ambient_remainder);
+        				printLog("ambient_int is %d or %x\n\r",ambient_int,ambient_int);
+        				printLog("ambient_int remainder is %d or %x\n\r",ambient_remainder_Uint,ambient_remainder_Uint);
+
+
+
+        				ambient_hex[2] = ambient_remainder_Uint;
+        				ambient_hex[1] = ambient_int;
+        				ambient_hex[0] = ambient_int >> 8;
+
+
+//////////// The method of storing double might differ from device to device.
+//////////// Hence,  double is split into integer and decimal points and stored and converted integers
+
+        				printLog("initial object is %f or %x\n\r",object,object);
+        				double object_remainder = modf(object,&object);
+        				int16_t object_int;
+        				uint8_t object_remainder_Uint;
+        				object_int = (int16_t)object;
+        				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
+        				///// then get the absolute value
+        				object_remainder_Uint = abs((uint8_t) (object_remainder*100));
+
+        				object_hex[2] = object_remainder_Uint;
+        				object_hex[1] = object_int;
+        				object_hex[0] = object_int >> 8;
+        				printLog("object is %f or %x\n\r",object,object);
+        				printLog("object remainder is %f or %x\n\r",object_remainder,object_remainder);
+        				printLog("object_int is %d or %x\n\r",object_int,object_int);
+        				printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
+
+
+						 //// doesnt work without soft timer, needs to have a break to send the data
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic, 3, (const uint8*)&ambient_hex);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic, 3, (const uint8*)&object_hex);
 
 
         }
