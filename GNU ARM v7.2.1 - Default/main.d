@@ -79,9 +79,7 @@ main.o: ../main.c ../init_mcu.h ../board_features.h \
  ../hal-config.h \
  /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/halconfig/bsphalconfig.h \
  /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/bsp/bsp_bcp.h \
- ../app.h \
- /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/drivers/retargetserial.h \
- /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/halconfig/retargetserialhalconfig.h
+ ../app.h
 
 ../init_mcu.h:
 
@@ -252,7 +250,3 @@ main.o: ../main.c ../init_mcu.h ../board_features.h \
 /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/bsp/bsp_bcp.h:
 
 ../app.h:
-
-/Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/drivers/retargetserial.h:
-
-/Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/halconfig/retargetserialhalconfig.h:

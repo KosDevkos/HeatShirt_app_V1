@@ -59,7 +59,7 @@
 
 
 
-#define SENSOR_1    0x3A << 1
+#define SENSOR_1    0x3B << 1
 
 void printTime();
 
@@ -107,14 +107,11 @@ void appMain(gecko_configuration_t *pconfig)
         bootMessage(&(evt->data.evt_system_boot));
         printLog("boot event - starting advertising\r\n");
 
-        /* Set advertising parameters. 100ms advertisement interval.
-         * The first parameter is advertising set handle
-         * The next two parameters are minimum and maximum advertising interval, both in
-         * units of (milliseconds * 1.6).
-         * The last two parameters are duration and maxevents left as default. */
-        gecko_cmd_le_gap_set_advertise_timing(0, 160, 160, 0, 0);
 
-
+		///////////////////start of Switch transitor ON or OFF
+        GPIO_PinModeSet(gpioPortA, 0, gpioModePushPull, 1);
+		GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 1);
+		///////////////////end of Switch transitor ON or OFF
 
 		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
 
@@ -125,8 +122,8 @@ void appMain(gecko_configuration_t *pconfig)
 		  myi2cinit.sclPin = 6;
 		  myi2cinit.portLocationScl = 10;
 		  myi2cinit.sdaPort = gpioPortC;
-		  myi2cinit.sdaPin = 7;
-		  myi2cinit.portLocationSda = 12;
+		  myi2cinit.sdaPin = 8;
+		  myi2cinit.portLocationSda = 13;
 
 
 
@@ -255,6 +252,14 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
+        /* Set advertising parameters. 100ms advertisement interval.
+         * The first parameter is advertising set handle
+         * The next two parameters are minimum and maximum advertising interval, both in
+         * units of (milliseconds * 1.6).
+         * The last two parameters are duration and maxevents left as default. */
+        gecko_cmd_le_gap_set_advertise_timing(0, 160, 160, 0, 0);
+
+
         /* Start general advertising and enable connections. */
         gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
 
@@ -276,6 +281,9 @@ void appMain(gecko_configuration_t *pconfig)
       case gecko_evt_hardware_soft_timer_id:
 
         if (evt->data.evt_hardware_soft_timer.handle == 0) {
+
+
+
 
         				ret = mlx90632_read_temp_raw(&ambient_new_raw, &ambient_old_raw,
         											 &object_new_raw, &object_old_raw);
