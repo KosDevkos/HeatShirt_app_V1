@@ -59,11 +59,11 @@
 
 
 /////////////// SENSOR ADDRESSES
-
+uint16_t Sensor_GND = 0x3A << 1;
 uint16_t Sensor_VDD = 0x3B << 1;
 
 
-void printTime();
+/// void printTime();
 
 
 
@@ -134,12 +134,16 @@ void appMain(gecko_configuration_t *pconfig)
 
 		I2C_TransferReturn_TypeDef transfer_status;
 
-        int16_t object_new_raw;
-		int16_t object_old_raw;
-		int16_t ambient_new_raw;
-		int16_t ambient_old_raw;
+        int16_t object_new_raw_GND;
+		int16_t object_old_raw_GND;
+		int16_t ambient_new_raw_GND;
+		int16_t ambient_old_raw_GND;
+        int16_t object_new_raw_VDD;
+		int16_t object_old_raw_VDD;
+		int16_t ambient_new_raw_VDD;
+		int16_t ambient_old_raw_VDD;
 
-		usleep(10,1);
+		usleep(10,10);
 
 		int32_t P_T;
 		uint16_t P_T_MS;
@@ -246,10 +250,14 @@ void appMain(gecko_configuration_t *pconfig)
 
 
         int32_t ret = 0;
-        double ambient;
-        double object;
-        uint8_t ambient_hex[3];
-        uint8_t object_hex[3];
+        double ambient_VDD;
+        double ambient_GND;
+        double object_VDD;
+        double object_GND;
+        uint8_t ambient_hex_VDD[3];
+        uint8_t ambient_hex_GND[3];
+        uint8_t object_hex_VDD[3];
+        uint8_t object_hex_GND[3];
 
 
 
@@ -285,9 +293,9 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-
-        				ret = mlx90632_read_temp_raw(Sensor_VDD, &ambient_new_raw, &ambient_old_raw,
-        											 &object_new_raw, &object_old_raw);
+       //////////////// VDD SENSOR READING (AMBIENT AND OBJECT)
+        				ret = mlx90632_read_temp_raw(Sensor_VDD, &ambient_new_raw_VDD, &ambient_old_raw_VDD,
+        											 &object_new_raw_VDD, &object_old_raw_VDD);
         				if(ret < 0){
         					/* Something went wrong - abort */
         					printLog("error is : %ld\n\r", ret);
@@ -297,64 +305,117 @@ void appMain(gecko_configuration_t *pconfig)
         						//printLog("ambient_new_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_new_raw,ambient_new_raw);
         						//printLog("ambient_old_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_old_raw,ambient_old_raw);
 
-        				ambient = mlx90632_calc_temp_ambient(ambient_new_raw, ambient_old_raw,P_T, P_R, P_G, P_O, Gb);
+        				ambient_VDD = mlx90632_calc_temp_ambient(ambient_new_raw_VDD, ambient_old_raw_VDD, P_T, P_R, P_G, P_O, Gb);
         				/* Get preprocessed temperatures needed for object temperature calculation */
-        				double pre_ambient = mlx90632_preprocess_temp_ambient(ambient_new_raw, ambient_old_raw, Gb);
-        				double pre_object = mlx90632_preprocess_temp_object(object_new_raw, object_old_raw,ambient_new_raw, ambient_old_raw,Ka);
+        				double pre_ambient_VDD = mlx90632_preprocess_temp_ambient(ambient_new_raw_VDD, ambient_old_raw_VDD, Gb);
+        				double pre_object_VDD = mlx90632_preprocess_temp_object(object_new_raw_VDD, object_old_raw_VDD,ambient_new_raw_VDD, ambient_old_raw_VDD,Ka);
         				/* Calculate object temperature */
-        				object = mlx90632_calc_temp_object(pre_object, pre_ambient, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
-        				printLog("ambient is : %f - %x    object is : %f - %x \n\r", ambient,ambient,object,object);
-        				printLog("int ambient is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
+        				object_VDD = mlx90632_calc_temp_object(pre_object_VDD, pre_ambient_VDD, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
+        				printLog("ambient_VDD is : %f - %x    object is : %f - %x \n\r", ambient_VDD,ambient_VDD,object_VDD,object_VDD);
+        				///!!!printLog("int ambient_VDD is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
 
+       //////////////// GND SENSOR READING (AMBIENT AND OBJECT)
+        				ret = mlx90632_read_temp_raw(Sensor_GND, &ambient_new_raw_GND, &ambient_old_raw_GND,
+        											 &object_new_raw_GND, &object_old_raw_GND);
+        				if(ret < 0){
+        					/* Something went wrong - abort */
+        					printLog("error is : %ld\n\r", ret);
+        				}
+        				/* Now start calculations (no more i2c accesses) */
+        				/* Calculate ambient temperature */
+        						//printLog("ambient_new_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_new_raw,ambient_new_raw);
+        						//printLog("ambient_old_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_old_raw,ambient_old_raw);
 
-        				printLog("initial ambient is %f or %x\n\r",ambient,ambient);
-        				double ambient_remainder = modf(ambient,&ambient);
-        				int16_t ambient_int;
-        				uint8_t ambient_remainder_Uint;
+        				ambient_GND = mlx90632_calc_temp_ambient(ambient_new_raw_GND, ambient_old_raw_GND, P_T, P_R, P_G, P_O, Gb);
+        				/* Get preprocessed temperatures needed for object temperature calculation */
+        				double pre_ambient_GND = mlx90632_preprocess_temp_ambient(ambient_new_raw_GND, ambient_old_raw_GND, Gb);
+        				double pre_object_GND = mlx90632_preprocess_temp_object(object_new_raw_GND, object_old_raw_GND,ambient_new_raw_GND, ambient_old_raw_GND,Ka);
+        				/* Calculate object temperature */
+        				object_GND = mlx90632_calc_temp_object(pre_object_GND, pre_ambient_GND, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
+        				printLog("ambient_GND is : %f - %x    object_GND is : %f - %x \n\r", ambient_GND,ambient_GND,object_GND,object_GND);
+        				///!!!printLog("int ambient GND is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
 
-        				ambient_int = (int16_t)ambient;
+        /////////////////VDD SENSOR AMBIENT CONVERSION FOR TRANSMISSION
+        				//////////// The method of storing double might differ from device to device.
+        				//////////// Hence,  double is split into integer and decimal points and stored and converted integers
+        				///!!!printLog("initial ambient is %f or %x\n\r",ambient,ambient);
+        				double ambient_remainder_VDD = modf(ambient_VDD,&ambient_VDD);
+        				int16_t ambient_int_VDD;
+        				uint8_t ambient_remainder_Uint_VDD;
+
+
+        				ambient_int_VDD = (int16_t)ambient_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
-        				ambient_remainder_Uint = abs((uint8_t) (ambient_remainder*100));
+        				ambient_remainder_Uint_VDD = abs((uint8_t) (ambient_remainder_VDD*100));
 
-        				printLog("ambient is %f or %x\n\r",ambient,ambient);
-        				printLog("ambient remainder is %f or %x\n\r",ambient_remainder,ambient_remainder);
-        				printLog("ambient_int is %d or %x\n\r",ambient_int,ambient_int);
-        				printLog("ambient_int remainder is %d or %x\n\r",ambient_remainder_Uint,ambient_remainder_Uint);
-
-
-
-        				ambient_hex[2] = ambient_remainder_Uint;
-        				ambient_hex[1] = ambient_int;
-        				ambient_hex[0] = ambient_int >> 8;
+        				///!!!printLog("ambient is %f or %x\n\r",ambient,ambient);
+        				///!!!printLog("ambient remainder is %f or %x\n\r",ambient_remainder,ambient_remainder);
+        				///!!!printLog("ambient_int is %d or %x\n\r",ambient_int,ambient_int);
+        				///!!!printLog("ambient_int remainder is %d or %x\n\r",ambient_remainder_Uint,ambient_remainder_Uint);
 
 
-//////////// The method of storing double might differ from device to device.
-//////////// Hence,  double is split into integer and decimal points and stored and converted integers
 
-        				printLog("initial object is %f or %x\n\r",object,object);
-        				double object_remainder = modf(object,&object);
-        				int16_t object_int;
-        				uint8_t object_remainder_Uint;
-        				object_int = (int16_t)object;
+        				ambient_hex_VDD[2] = ambient_remainder_Uint_VDD;
+        				ambient_hex_VDD[1] = ambient_int_VDD;
+        				ambient_hex_VDD[0] = ambient_int_VDD >> 8;
+
+
+
+         /////////////////VDD SENSOR OBJECT CONVERSION FOR TRANSMISSION
+        				///!!!printLog("initial object is %f or %x\n\r",object,object);
+        				double object_remainder_VDD = modf(object_VDD,&object_VDD);
+        				int16_t object_int_VDD;
+        				uint8_t object_remainder_Uint_VDD;
+        				object_int_VDD = (int16_t)object_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
-        				object_remainder_Uint = abs((uint8_t) (object_remainder*100));
+        				object_remainder_Uint_VDD = abs((uint8_t) (object_remainder_VDD*100));
 
-        				object_hex[2] = object_remainder_Uint;
-        				object_hex[1] = object_int;
-        				object_hex[0] = object_int >> 8;
-        				printLog("object is %f or %x\n\r",object,object);
-        				printLog("object remainder is %f or %x\n\r",object_remainder,object_remainder);
-        				printLog("object_int is %d or %x\n\r",object_int,object_int);
-        				printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
+        				object_hex_VDD[2] = object_remainder_Uint_VDD;
+        				object_hex_VDD[1] = object_int_VDD;
+        				object_hex_VDD[0] = object_int_VDD >> 8;
+        				///!!!printLog("object is %f or %x\n\r",object,object);
+        				///!!!printLog("object remainder is %f or %x\n\r",object_remainder,object_remainder);
+        				///!!!printLog("object_int is %d or %x\n\r",object_int,object_int);
+        				///!!!printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
+
+		/////////////////GND SENSOR AMBIENT CONVERSION FOR TRANSMISSION
+
+						double ambient_remainder_GND = modf(ambient_GND,&ambient_GND);
+						int16_t ambient_int_GND;
+						uint8_t ambient_remainder_Uint_GND;
+						ambient_int_GND = (int16_t)ambient_GND;
+						ambient_remainder_Uint_GND = abs((uint8_t) (ambient_remainder_GND*100));
+
+						ambient_hex_GND[2] = ambient_remainder_Uint_GND;
+						ambient_hex_GND[1] = ambient_int_GND;
+						ambient_hex_GND[0] = ambient_int_GND >> 8;
+
+		 /////////////////GND SENSOR OBJECT CONVERSION FOR TRANSMISSION
+
+						double object_remainder_GND = modf(object_GND,&object_GND);
+						int16_t object_int_GND;
+						uint8_t object_remainder_Uint_GND;
+						object_int_GND = (int16_t)object_GND;
+						object_remainder_Uint_GND = abs((uint8_t) (object_remainder_GND*100));
+
+						object_hex_GND[2] = object_remainder_Uint_GND;
+						object_hex_GND[1] = object_int_GND;
+						object_hex_GND[0] = object_int_GND >> 8;
+
+
+
 
 
 						 //// doesnt work without soft timer, needs to have a break to send the data
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic, 3, (const uint8*)&ambient_hex);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic, 3, (const uint8*)&object_hex);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
+
 
 
         }

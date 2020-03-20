@@ -43,7 +43,7 @@
 #define VERSION "test"
 #endif
 
-static const char mlx90632version[] __attribute__((used)) = { VERSION };
+///static const char mlx90632version[] __attribute__((used)) = { VERSION };
 
 #ifndef STATIC
 #define STATIC static
@@ -164,7 +164,7 @@ STATIC int mlx90632_start_measurement(uint16_t Device_ID)
          * should be calculated according to refresh rate
          * atm 10ms - 11ms
          */
-        usleep(50, 55);
+        usleep(15, 55);
     }
 
     if (tries < 0)
