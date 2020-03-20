@@ -39,7 +39,7 @@
  * Made the compiler printLof() floats in the project
  *
  */
-
+////TEST///////
 
 /* Bluetooth stack headers */
 #include "bg_types.h"
