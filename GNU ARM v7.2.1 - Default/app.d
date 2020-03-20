@@ -82,7 +82,8 @@ app.o: ../app.c \
  ../app.h \
  /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/drivers/retargetserial.h \
  /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/hardware/kit/common/halconfig/retargetserialhalconfig.h \
- ../mlx90632.h ../mlx90632_depends.h
+ ../mlx90632.h ../mlx90632_depends.h \
+ /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/platform/emlib/inc/em_timer.h
 
 /Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/protocol/bluetooth/ble_stack/inc/common/bg_types.h:
 
@@ -253,3 +254,5 @@ app.o: ../app.c \
 ../mlx90632.h:
 
 ../mlx90632_depends.h:
+
+/Users/ilyakosvin/SimplicityStudio/v4_workspace/MLX90632_V1/platform/emlib/inc/em_timer.h:

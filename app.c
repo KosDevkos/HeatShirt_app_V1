@@ -57,11 +57,17 @@
 
 #include "math.h"
 
+// include timer library for PWM
+#include "em_timer.h"
+
 
 /////////////// SENSOR ADDRESSES
 uint16_t Sensor_GND = 0x3A << 1;
 uint16_t Sensor_VDD = 0x3B << 1;
 
+/////////////// PWM DEFINE
+// this PWM_FREQ = 65000 creates about 1kHz signal.
+#define PWM_FREQ 65000
 
 /// void printTime();
 
@@ -108,12 +114,87 @@ void appMain(gecko_configuration_t *pconfig)
 
         bootMessage(&(evt->data.evt_system_boot));
 
+        /* Enable clock for TIMER0 module */
+        CMU_ClockEnable(cmuClock_TIMER0, true);
+
+        /* Initialize pins used for PWM */
+        GPIO_PinModeSet(gpioPortC, 10, gpioModePushPull, 0);
+        ///!!!GPIO_PinModeSet(gpioPortA, 0, gpioModePushPull, 0);
+		GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 0);
+
+	    /* Route pins to timer */
+	    // $[TIMER0 I/O setup]
+	    /* Set up CC0 */
+	    ///!!!TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
+	    ///!!!        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
+	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
+	            | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
+	    TIMER0->ROUTEPEN = TIMER0->ROUTEPEN | TIMER_ROUTEPEN_CC0PEN;
+	    /* Set up CC1 */
+	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC1LOC_MASK))
+	            | TIMER_ROUTELOC0_CC1LOC_LOC3;    /// set to location 0 (for PA4)  P14 on dev board
+	    TIMER0->ROUTEPEN = TIMER0->ROUTEPEN | TIMER_ROUTEPEN_CC1PEN;
+	    // [TIMER0 I/O setup]$
 
 
-		///////////////////start of Switch transitor ON or OFF
-        GPIO_PinModeSet(gpioPortA, 0, gpioModePushPull, 1);
-		GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 1);
-		///////////////////end of Switch transitor ON or OFF
+
+	    /* Select CC channel parameters */
+	      TIMER_InitCC_TypeDef timerCCInit =
+	      {
+	        .eventCtrl  = timerEventEveryEdge,
+	        .edge       = timerEdgeBoth,
+	        .prsSel     = timerPRSSELCh0,
+	        .cufoa      = timerOutputActionNone,
+	        .cofoa      = timerOutputActionNone,
+	        .cmoa       = timerOutputActionToggle,
+	        .mode       = timerCCModePWM,
+	        .filter     = false,
+	        .prsInput   = false,
+	        .coist      = false,
+	        .outInvert  = false,
+	      };
+
+	      /* Configure CC channel 0 */
+	      TIMER_InitCC(TIMER0, 0, &timerCCInit);
+	      /* Configure CC channel 1 */
+	      TIMER_InitCC(TIMER0, 1, &timerCCInit);
+	      /* Set Top Value */
+	      TIMER_TopSet(TIMER0, CMU_ClockFreqGet(cmuClock_HFPER)/PWM_FREQ);
+	      /* Set compare value starting at 0 - it will be incremented in the interrupt handler */
+	      TIMER_CompareBufSet(TIMER0, 0, 290);
+	      TIMER_CompareBufSet(TIMER0, 1, 580);
+
+
+	      /* Select timer parameters */
+	      TIMER_Init_TypeDef timerInit =
+	      {
+	        .enable     = true,
+	        .debugRun   = true,
+	        .prescale   = timerPrescale64,
+	        .clkSel     = timerClkSelHFPerClk,
+	        .fallAction = timerInputActionNone,
+	        .riseAction = timerInputActionNone,
+	        .mode       = timerModeUp,
+	        .dmaClrAct  = false,
+	        .quadModeX4 = false,
+	        .oneShot    = false,
+	        .sync       = false,
+	      };
+
+	     // /* Enable overflow interrupt */
+	     // TIMER_IntEnable(TIMER0, TIMER_IF_OF);
+	     // /* Enable TIMER0 interrupt vector in NVIC */
+	     /// NVIC_EnableIRQ(TIMER0_IRQn);
+
+	      /* Configure timer */
+	      TIMER_Init(TIMER0, &timerInit);
+
+
+
+
+
+
+
 
 		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
 
