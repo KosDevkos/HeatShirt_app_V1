@@ -43,7 +43,7 @@
 #include "em_gpio.h"
 
 //////////////////////////////////////////////MY DEFINE
-#define Device_ID 0x3B << 1
+/// #define Device_ID 0x3B << 1
 
 
 /** Read the register_address value from the mlx90632

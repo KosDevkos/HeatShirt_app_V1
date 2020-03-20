@@ -160,7 +160,7 @@
  * @retval 0 Successfully read both temperatures
  * @retval <0 Something went wrong. Check errno.h for more details
  */
-int32_t mlx90632_read_temp_raw(int16_t *ambient_new_raw, int16_t *ambient_old_raw,
+int32_t mlx90632_read_temp_raw(uint16_t Device_ID, int16_t *ambient_new_raw, int16_t *ambient_old_raw,
                                int16_t *object_new_raw, int16_t *object_old_raw);
 
 /** Calculation of raw ambient output
@@ -252,7 +252,7 @@ double mlx90632_calc_temp_object(int32_t object, int32_t ambient,
  * @retval 0 Successfully initialized MLX90632 driver
  * @retval <0 Something went wrong. Consult errno.h for more details.
  */
-int32_t mlx90632_init(void);
+int32_t mlx90632_init(uint16_t Device_ID);
 
 /** Set emissivity which is retained in single variable.
  *
@@ -269,9 +269,9 @@ double mlx90632_get_emissivity(void);
 ///@}
 
 #ifdef TEST
-int mlx90632_start_measurement(void);
-int32_t mlx90632_read_temp_ambient_raw(int16_t *ambient_new_raw, int16_t *ambient_old_raw);
-int32_t mlx90632_read_temp_object_raw(int32_t start_measurement_ret,
+int mlx90632_start_measurement(uint16_t Device_ID);
+int32_t mlx90632_read_temp_ambient_raw(uint16_t Device_ID, int16_t *ambient_new_raw, int16_t *ambient_old_raw);
+int32_t mlx90632_read_temp_object_raw(uint16_t Device_ID, int32_t start_measurement_ret,
                                       int16_t *object_new_raw, int16_t *object_old_raw);
 #endif
 

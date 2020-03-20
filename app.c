@@ -58,8 +58,10 @@
 #include "math.h"
 
 
+/////////////// SENSOR ADDRESSES
 
-#define SENSOR_1    0x3B << 1
+uint16_t Sensor_VDD = 0x3B << 1;
+
 
 void printTime();
 
@@ -105,7 +107,7 @@ void appMain(gecko_configuration_t *pconfig)
       case gecko_evt_system_boot_id:
 
         bootMessage(&(evt->data.evt_system_boot));
-        printLog("boot event - starting advertising\r\n");
+
 
 
 		///////////////////start of Switch transitor ON or OFF
@@ -114,7 +116,6 @@ void appMain(gecko_configuration_t *pconfig)
 		///////////////////end of Switch transitor ON or OFF
 
 		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
-
 
 
 		  I2CSPM_Init_TypeDef myi2cinit = I2CSPM_INIT_DEFAULT;
@@ -138,13 +139,13 @@ void appMain(gecko_configuration_t *pconfig)
 		int16_t ambient_new_raw;
 		int16_t ambient_old_raw;
 
-		usleep(10000,1);
+		usleep(10,1);
 
 		int32_t P_T;
 		uint16_t P_T_MS;
 		uint16_t P_T_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_T, &P_T_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_T+1, &P_T_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_T, &P_T_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_T+1, &P_T_MS);
 		P_T = (P_T_MS <<16) | P_T_LS;
 		printLog("	P_T is %ld or %X\n\n\r",P_T,P_T);
 
@@ -152,84 +153,84 @@ void appMain(gecko_configuration_t *pconfig)
 		int32_t P_R;
 		uint16_t P_R_MS;
 		uint16_t P_R_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_R, &P_R_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_R +1, &P_R_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_R, &P_R_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_R +1, &P_R_MS);
 		P_R = (P_R_MS <<16) | P_R_LS;
 		printLog("	P_R is %ld or %X\n\n\r",P_R,P_R);
 
 		int32_t P_G ;
 		uint16_t P_G_MS;
 		uint16_t P_G_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_G, &P_G_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_G + 1, &P_G_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_G, &P_G_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_G + 1, &P_G_MS);
 		P_G = (P_G_MS <<16) | P_G_LS;
 		printLog("	P_G is %ld or %X\n\n\r",P_G,P_G);
 
 		int32_t P_O ;
 		uint16_t P_O_MS;
 		uint16_t P_O_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_O, &P_O_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_O+1, &P_O_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_O, &P_O_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_O+1, &P_O_MS);
 		P_O = (P_O_MS <<16) | P_O_LS;
 		printLog("	P_O is %ld or %X\n\n\r",P_O,P_O);
 
 		uint16_t Gb_UINT;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Gb, &Gb_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Gb, &Gb_UINT);
 		int16_t Gb = Gb_UINT;
 		printLog("	Gb is %d or %X\n\n\r",Gb,Gb);
 
 		uint16_t Ka_UINT ;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ka, &Ka_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ka, &Ka_UINT);
 		int16_t Ka = Ka_UINT;
 		printLog("	Ka is %d or %X\n\n\r",Ka,Ka);
 
 		int32_t Ea ;
 		uint16_t Ea_MS;
 		uint16_t Ea_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ea, &Ea_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ea+1, &Ea_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ea, &Ea_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ea+1, &Ea_MS);
 		Ea = (Ea_MS <<16) | Ea_LS;
 		printLog("	Ea is %ld or %X\n\n\r",Ea,Ea);
 
 		int32_t Eb ;
 		uint16_t Eb_MS;
 		uint16_t Eb_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Eb, &Eb_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Eb+1, &Eb_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Eb, &Eb_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Eb+1, &Eb_MS);
 		Eb = (Eb_MS <<16) | Eb_LS;
 		printLog("	Eb is %ld or %X\n\n\r",Eb,Eb);
 
 		int32_t Ga ;
 		uint16_t Ga_MS;
 		uint16_t Ga_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ga, &Ga_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ga+1, &Ga_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ga, &Ga_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ga+1, &Ga_MS);
 		Ga = (Ga_MS <<16) | Ga_LS;
 		printLog("	Ga is %ld or %X\n\n\r",Ga,Ga);
 
 		int32_t Fa ;
 		uint16_t Fa_MS;
 		uint16_t Fa_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fa, &Fa_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fa+1, &Fa_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fa, &Fa_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fa+1, &Fa_MS);
 		Fa = (Fa_MS <<16) | Fa_LS;
 		printLog("	Fa is %ld or %X\n\n\r",Fa,Fa);
 
 		int32_t Fb ;
 		uint16_t Fb_MS;
 		uint16_t Fb_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fb, &Fb_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fb+1, &Fb_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fb, &Fb_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fb+1, &Fb_MS);
 		Fb = (Fb_MS <<16) | Fb_LS;
 		printLog("	Fb is %ld or %X\n\n\r",Fb,Fb);
 
 		uint16_t Ha_UINT ;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ha, &Ha_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ha, &Ha_UINT);
 		uint16_t Ha = Ha_UINT;
 		printLog("	Ha is %d or %X\n\n\r",Ha,Ha);
 
 		uint16_t Hb_UINT ;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Hb, &Hb_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Hb, &Hb_UINT);
 		int16_t Hb = Hb_UINT;
 		printLog("	Hb is %d or %X\n\n\r",Hb,Hb);
 
@@ -238,9 +239,9 @@ void appMain(gecko_configuration_t *pconfig)
 	    uint16_t reg_status;
 
 	    /// ADDING ONE BIT TO A STATUS REGISTER??????????
-	    mlx90632_i2c_read(I2C0,Device_ID,MLX90632_REG_STATUS, &reg_status);
+	    mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_REG_STATUS, &reg_status);
 			//printLog("Im in mlx90632_start_measurement - REG_STATUS_1 IS: %x\n\n\r",reg_status);
-	    mlx90632_i2c_write(I2C0,Device_ID,MLX90632_REG_STATUS, reg_status | 0x0100);
+	    mlx90632_i2c_write(I2C0,Sensor_VDD,MLX90632_REG_STATUS, reg_status | 0x0100);
 
 
 
@@ -262,7 +263,7 @@ void appMain(gecko_configuration_t *pconfig)
 
         /* Start general advertising and enable connections. */
         gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
-
+        printLog("boot event - starting advertising\r\n");
 
         break;
 
@@ -285,7 +286,7 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-        				ret = mlx90632_read_temp_raw(&ambient_new_raw, &ambient_old_raw,
+        				ret = mlx90632_read_temp_raw(Sensor_VDD, &ambient_new_raw, &ambient_old_raw,
         											 &object_new_raw, &object_old_raw);
         				if(ret < 0){
         					/* Something went wrong - abort */
