@@ -43,7 +43,7 @@
 #define VERSION "test"
 #endif
 
-static const char mlx90632version[] __attribute__((used)) = { VERSION };
+///static const char mlx90632version[] __attribute__((used)) = { VERSION };
 
 #ifndef STATIC
 #define STATIC static
@@ -51,7 +51,7 @@ static const char mlx90632version[] __attribute__((used)) = { VERSION };
 
 extern void usleep(int min_range, int max_range){
 
-	for(volatile long i=0; i<33*min_range; i++);  // 33000 is 1ms ish delay
+	for(volatile long i=0; i<33000*min_range; i++);  // 33000 is 1ms ish delay
 
 }
 
@@ -133,7 +133,7 @@ extern int32_t mlx90632_i2c_write(I2C_TypeDef *i2c, uint16_t sensor_address, int
  *
  * @note This function is using usleep so it is blocking!
  */
-STATIC int mlx90632_start_measurement(void)
+STATIC int mlx90632_start_measurement(uint16_t Device_ID)
 {
 		//printLog("Im in mlx90632_start_measurement\n\n\r");
     int ret, tries = 100; /////// change to I2C_TransferReturn_TypeDef
@@ -164,7 +164,7 @@ STATIC int mlx90632_start_measurement(void)
          * should be calculated according to refresh rate
          * atm 10ms - 11ms
          */
-        usleep(50*1000, 1100);
+        usleep(15, 55);
     }
 
     if (tries < 0)
@@ -226,7 +226,7 @@ static int32_t mlx90632_channel_new_select(int32_t ret, uint8_t *channel_new, ui
  * @retval 0 Successfully read both values
  * @retval <0 Something went wrong. Check errno.h for more details.
  */
-STATIC int32_t mlx90632_read_temp_ambient_raw(int16_t *ambient_new_raw, int16_t *ambient_old_raw)
+STATIC int32_t mlx90632_read_temp_ambient_raw(uint16_t Device_ID, int16_t *ambient_new_raw, int16_t *ambient_old_raw)
 {
 		//printLog("Im in mlx90632_read_temp_ambient_raw\n\n\r");
     int32_t ret;  /////// change to I2C_TransferReturn_TypeDef
@@ -263,7 +263,7 @@ STATIC int32_t mlx90632_read_temp_ambient_raw(int16_t *ambient_new_raw, int16_t 
  * @retval 0 Successfully read both values
  * @retval <0 Something went wrong. Check errno.h for more details.
  */
-STATIC int32_t mlx90632_read_temp_object_raw(int32_t start_measurement_ret,
+STATIC int32_t mlx90632_read_temp_object_raw(uint16_t Device_ID, int32_t start_measurement_ret,
                                              int16_t *object_new_raw, int16_t *object_old_raw)
 {
 		//printLog("Im in mlx90632_read_temp_object_raw\n\n\r");
@@ -313,25 +313,25 @@ STATIC int32_t mlx90632_read_temp_object_raw(int32_t start_measurement_ret,
     return ret;
 }
 
-int32_t mlx90632_read_temp_raw(int16_t *ambient_new_raw, int16_t *ambient_old_raw,
+int32_t mlx90632_read_temp_raw(uint16_t Device_ID, int16_t *ambient_new_raw, int16_t *ambient_old_raw,
                                int16_t *object_new_raw, int16_t *object_old_raw)
 {
 		//printLog("Im in mlx90632_read_temp_raw\n\n\r");
     int32_t ret, start_measurement_ret;
 
     // trigger and wait for measurement to complete
-    start_measurement_ret = mlx90632_start_measurement();
+    start_measurement_ret = mlx90632_start_measurement(Device_ID);
     	//printLog("Im in mlx90632_read_temp_raw - start_measurement_ret IS: %ld\n\n\r",start_measurement_ret);
     if (start_measurement_ret < 0)
         return start_measurement_ret;
 
     /** Read new and old **ambient** values from sensor */
-    ret = mlx90632_read_temp_ambient_raw(ambient_new_raw, ambient_old_raw);
+    ret = mlx90632_read_temp_ambient_raw(Device_ID, ambient_new_raw, ambient_old_raw);
     if (ret < 0)
         return ret;
     	//printLog("ret in mlx90632_read_temp_raw()- after ambient is %ld\n\n\r",ret);
     /** Read new and old **object** values from sensor */
-    ret = mlx90632_read_temp_object_raw(start_measurement_ret, object_new_raw, object_old_raw);
+    ret = mlx90632_read_temp_object_raw(Device_ID, start_measurement_ret, object_new_raw, object_old_raw);
     	//printLog("ret in mlx90632_read_temp_raw()- after object is %ld\n\n\r",ret);
     return ret;
 }
@@ -459,7 +459,7 @@ double mlx90632_calc_temp_object(int32_t object, int32_t ambient,
     return temp;
 }
 
-int32_t mlx90632_init(void)
+int32_t mlx90632_init(uint16_t Device_ID)
 {
     int32_t ret;
     uint16_t eeprom_version, reg_status;

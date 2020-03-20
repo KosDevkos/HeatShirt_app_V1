@@ -57,11 +57,19 @@
 
 #include "math.h"
 
+// include timer library for PWM
+#include "em_timer.h"
 
 
-#define SENSOR_1    0x3B << 1
+/////////////// SENSOR ADDRESSES
+uint16_t Sensor_GND = 0x3A << 1;
+uint16_t Sensor_VDD = 0x3B << 1;
 
-void printTime();
+/////////////// PWM DEFINE
+// this PWM_FREQ = 65000 creates about 1kHz signal.
+#define PWM_FREQ 65000
+
+/// void printTime();
 
 
 
@@ -105,16 +113,90 @@ void appMain(gecko_configuration_t *pconfig)
       case gecko_evt_system_boot_id:
 
         bootMessage(&(evt->data.evt_system_boot));
-        printLog("boot event - starting advertising\r\n");
+
+        /* Enable clock for TIMER0 module */
+        CMU_ClockEnable(cmuClock_TIMER0, true);
+
+        /* Initialize pins used for PWM */
+        GPIO_PinModeSet(gpioPortC, 10, gpioModePushPull, 0);
+        ///!!!GPIO_PinModeSet(gpioPortA, 0, gpioModePushPull, 0);
+		GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 0);
+
+	    /* Route pins to timer */
+	    // $[TIMER0 I/O setup]
+	    /* Set up CC0 */
+	    ///!!!TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
+	    ///!!!        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
+	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
+	            | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
+	    TIMER0->ROUTEPEN = TIMER0->ROUTEPEN | TIMER_ROUTEPEN_CC0PEN;
+	    /* Set up CC1 */
+	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC1LOC_MASK))
+	            | TIMER_ROUTELOC0_CC1LOC_LOC3;    /// set to location 0 (for PA4)  P14 on dev board
+	    TIMER0->ROUTEPEN = TIMER0->ROUTEPEN | TIMER_ROUTEPEN_CC1PEN;
+	    // [TIMER0 I/O setup]$
 
 
-		///////////////////start of Switch transitor ON or OFF
-        GPIO_PinModeSet(gpioPortA, 0, gpioModePushPull, 1);
-		GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 1);
-		///////////////////end of Switch transitor ON or OFF
+
+	    /* Select CC channel parameters */
+	      TIMER_InitCC_TypeDef timerCCInit =
+	      {
+	        .eventCtrl  = timerEventEveryEdge,
+	        .edge       = timerEdgeBoth,
+	        .prsSel     = timerPRSSELCh0,
+	        .cufoa      = timerOutputActionNone,
+	        .cofoa      = timerOutputActionNone,
+	        .cmoa       = timerOutputActionToggle,
+	        .mode       = timerCCModePWM,
+	        .filter     = false,
+	        .prsInput   = false,
+	        .coist      = false,
+	        .outInvert  = false,
+	      };
+
+	      /* Configure CC channel 0 */
+	      TIMER_InitCC(TIMER0, 0, &timerCCInit);
+	      /* Configure CC channel 1 */
+	      TIMER_InitCC(TIMER0, 1, &timerCCInit);
+	      /* Set Top Value */
+	      TIMER_TopSet(TIMER0, CMU_ClockFreqGet(cmuClock_HFPER)/PWM_FREQ);
+	      /* Set compare value starting at 0 - it will be incremented in the interrupt handler */
+	      TIMER_CompareBufSet(TIMER0, 0, 290);
+	      TIMER_CompareBufSet(TIMER0, 1, 580);
+
+
+	      /* Select timer parameters */
+	      TIMER_Init_TypeDef timerInit =
+	      {
+	        .enable     = true,
+	        .debugRun   = true,
+	        .prescale   = timerPrescale64,
+	        .clkSel     = timerClkSelHFPerClk,
+	        .fallAction = timerInputActionNone,
+	        .riseAction = timerInputActionNone,
+	        .mode       = timerModeUp,
+	        .dmaClrAct  = false,
+	        .quadModeX4 = false,
+	        .oneShot    = false,
+	        .sync       = false,
+	      };
+
+	     // /* Enable overflow interrupt */
+	     // TIMER_IntEnable(TIMER0, TIMER_IF_OF);
+	     // /* Enable TIMER0 interrupt vector in NVIC */
+	     /// NVIC_EnableIRQ(TIMER0_IRQn);
+
+	      /* Configure timer */
+	      TIMER_Init(TIMER0, &timerInit);
+
+
+
+
+
+
+
 
 		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
-
 
 
 		  I2CSPM_Init_TypeDef myi2cinit = I2CSPM_INIT_DEFAULT;
@@ -133,18 +215,22 @@ void appMain(gecko_configuration_t *pconfig)
 
 		I2C_TransferReturn_TypeDef transfer_status;
 
-        int16_t object_new_raw;
-		int16_t object_old_raw;
-		int16_t ambient_new_raw;
-		int16_t ambient_old_raw;
+        int16_t object_new_raw_GND;
+		int16_t object_old_raw_GND;
+		int16_t ambient_new_raw_GND;
+		int16_t ambient_old_raw_GND;
+        int16_t object_new_raw_VDD;
+		int16_t object_old_raw_VDD;
+		int16_t ambient_new_raw_VDD;
+		int16_t ambient_old_raw_VDD;
 
-		usleep(10000,1);
+		usleep(10,10);
 
 		int32_t P_T;
 		uint16_t P_T_MS;
 		uint16_t P_T_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_T, &P_T_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_T+1, &P_T_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_T, &P_T_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_T+1, &P_T_MS);
 		P_T = (P_T_MS <<16) | P_T_LS;
 		printLog("	P_T is %ld or %X\n\n\r",P_T,P_T);
 
@@ -152,84 +238,84 @@ void appMain(gecko_configuration_t *pconfig)
 		int32_t P_R;
 		uint16_t P_R_MS;
 		uint16_t P_R_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_R, &P_R_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_R +1, &P_R_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_R, &P_R_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_R +1, &P_R_MS);
 		P_R = (P_R_MS <<16) | P_R_LS;
 		printLog("	P_R is %ld or %X\n\n\r",P_R,P_R);
 
 		int32_t P_G ;
 		uint16_t P_G_MS;
 		uint16_t P_G_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_G, &P_G_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_G + 1, &P_G_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_G, &P_G_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_G + 1, &P_G_MS);
 		P_G = (P_G_MS <<16) | P_G_LS;
 		printLog("	P_G is %ld or %X\n\n\r",P_G,P_G);
 
 		int32_t P_O ;
 		uint16_t P_O_MS;
 		uint16_t P_O_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_O, &P_O_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_P_O+1, &P_O_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_O, &P_O_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_P_O+1, &P_O_MS);
 		P_O = (P_O_MS <<16) | P_O_LS;
 		printLog("	P_O is %ld or %X\n\n\r",P_O,P_O);
 
 		uint16_t Gb_UINT;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Gb, &Gb_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Gb, &Gb_UINT);
 		int16_t Gb = Gb_UINT;
 		printLog("	Gb is %d or %X\n\n\r",Gb,Gb);
 
 		uint16_t Ka_UINT ;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ka, &Ka_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ka, &Ka_UINT);
 		int16_t Ka = Ka_UINT;
 		printLog("	Ka is %d or %X\n\n\r",Ka,Ka);
 
 		int32_t Ea ;
 		uint16_t Ea_MS;
 		uint16_t Ea_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ea, &Ea_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ea+1, &Ea_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ea, &Ea_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ea+1, &Ea_MS);
 		Ea = (Ea_MS <<16) | Ea_LS;
 		printLog("	Ea is %ld or %X\n\n\r",Ea,Ea);
 
 		int32_t Eb ;
 		uint16_t Eb_MS;
 		uint16_t Eb_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Eb, &Eb_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Eb+1, &Eb_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Eb, &Eb_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Eb+1, &Eb_MS);
 		Eb = (Eb_MS <<16) | Eb_LS;
 		printLog("	Eb is %ld or %X\n\n\r",Eb,Eb);
 
 		int32_t Ga ;
 		uint16_t Ga_MS;
 		uint16_t Ga_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ga, &Ga_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ga+1, &Ga_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ga, &Ga_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ga+1, &Ga_MS);
 		Ga = (Ga_MS <<16) | Ga_LS;
 		printLog("	Ga is %ld or %X\n\n\r",Ga,Ga);
 
 		int32_t Fa ;
 		uint16_t Fa_MS;
 		uint16_t Fa_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fa, &Fa_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fa+1, &Fa_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fa, &Fa_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fa+1, &Fa_MS);
 		Fa = (Fa_MS <<16) | Fa_LS;
 		printLog("	Fa is %ld or %X\n\n\r",Fa,Fa);
 
 		int32_t Fb ;
 		uint16_t Fb_MS;
 		uint16_t Fb_LS;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fb, &Fb_LS);
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Fb+1, &Fb_MS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fb, &Fb_LS);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Fb+1, &Fb_MS);
 		Fb = (Fb_MS <<16) | Fb_LS;
 		printLog("	Fb is %ld or %X\n\n\r",Fb,Fb);
 
 		uint16_t Ha_UINT ;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Ha, &Ha_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Ha, &Ha_UINT);
 		uint16_t Ha = Ha_UINT;
 		printLog("	Ha is %d or %X\n\n\r",Ha,Ha);
 
 		uint16_t Hb_UINT ;
-		mlx90632_i2c_read(I2C0,Device_ID,MLX90632_EE_Hb, &Hb_UINT);
+		mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_EE_Hb, &Hb_UINT);
 		int16_t Hb = Hb_UINT;
 		printLog("	Hb is %d or %X\n\n\r",Hb,Hb);
 
@@ -238,17 +324,21 @@ void appMain(gecko_configuration_t *pconfig)
 	    uint16_t reg_status;
 
 	    /// ADDING ONE BIT TO A STATUS REGISTER??????????
-	    mlx90632_i2c_read(I2C0,Device_ID,MLX90632_REG_STATUS, &reg_status);
+	    mlx90632_i2c_read(I2C0,Sensor_VDD,MLX90632_REG_STATUS, &reg_status);
 			//printLog("Im in mlx90632_start_measurement - REG_STATUS_1 IS: %x\n\n\r",reg_status);
-	    mlx90632_i2c_write(I2C0,Device_ID,MLX90632_REG_STATUS, reg_status | 0x0100);
+	    mlx90632_i2c_write(I2C0,Sensor_VDD,MLX90632_REG_STATUS, reg_status | 0x0100);
 
 
 
         int32_t ret = 0;
-        double ambient;
-        double object;
-        uint8_t ambient_hex[3];
-        uint8_t object_hex[3];
+        double ambient_VDD;
+        double ambient_GND;
+        double object_VDD;
+        double object_GND;
+        uint8_t ambient_hex_VDD[3];
+        uint8_t ambient_hex_GND[3];
+        uint8_t object_hex_VDD[3];
+        uint8_t object_hex_GND[3];
 
 
 
@@ -262,7 +352,7 @@ void appMain(gecko_configuration_t *pconfig)
 
         /* Start general advertising and enable connections. */
         gecko_cmd_le_gap_start_advertising(0, le_gap_general_discoverable, le_gap_connectable_scannable);
-
+        printLog("boot event - starting advertising\r\n");
 
         break;
 
@@ -284,9 +374,9 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-
-        				ret = mlx90632_read_temp_raw(&ambient_new_raw, &ambient_old_raw,
-        											 &object_new_raw, &object_old_raw);
+       //////////////// VDD SENSOR READING (AMBIENT AND OBJECT)
+        				ret = mlx90632_read_temp_raw(Sensor_VDD, &ambient_new_raw_VDD, &ambient_old_raw_VDD,
+        											 &object_new_raw_VDD, &object_old_raw_VDD);
         				if(ret < 0){
         					/* Something went wrong - abort */
         					printLog("error is : %ld\n\r", ret);
@@ -296,64 +386,117 @@ void appMain(gecko_configuration_t *pconfig)
         						//printLog("ambient_new_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_new_raw,ambient_new_raw);
         						//printLog("ambient_old_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_old_raw,ambient_old_raw);
 
-        				ambient = mlx90632_calc_temp_ambient(ambient_new_raw, ambient_old_raw,P_T, P_R, P_G, P_O, Gb);
+        				ambient_VDD = mlx90632_calc_temp_ambient(ambient_new_raw_VDD, ambient_old_raw_VDD, P_T, P_R, P_G, P_O, Gb);
         				/* Get preprocessed temperatures needed for object temperature calculation */
-        				double pre_ambient = mlx90632_preprocess_temp_ambient(ambient_new_raw, ambient_old_raw, Gb);
-        				double pre_object = mlx90632_preprocess_temp_object(object_new_raw, object_old_raw,ambient_new_raw, ambient_old_raw,Ka);
+        				double pre_ambient_VDD = mlx90632_preprocess_temp_ambient(ambient_new_raw_VDD, ambient_old_raw_VDD, Gb);
+        				double pre_object_VDD = mlx90632_preprocess_temp_object(object_new_raw_VDD, object_old_raw_VDD,ambient_new_raw_VDD, ambient_old_raw_VDD,Ka);
         				/* Calculate object temperature */
-        				object = mlx90632_calc_temp_object(pre_object, pre_ambient, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
-        				printLog("ambient is : %f - %x    object is : %f - %x \n\r", ambient,ambient,object,object);
-        				printLog("int ambient is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
+        				object_VDD = mlx90632_calc_temp_object(pre_object_VDD, pre_ambient_VDD, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
+        				printLog("ambient_VDD is : %f - %x    object is : %f - %x \n\r", ambient_VDD,ambient_VDD,object_VDD,object_VDD);
+        				///!!!printLog("int ambient_VDD is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
 
+       //////////////// GND SENSOR READING (AMBIENT AND OBJECT)
+        				ret = mlx90632_read_temp_raw(Sensor_GND, &ambient_new_raw_GND, &ambient_old_raw_GND,
+        											 &object_new_raw_GND, &object_old_raw_GND);
+        				if(ret < 0){
+        					/* Something went wrong - abort */
+        					printLog("error is : %ld\n\r", ret);
+        				}
+        				/* Now start calculations (no more i2c accesses) */
+        				/* Calculate ambient temperature */
+        						//printLog("ambient_new_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_new_raw,ambient_new_raw);
+        						//printLog("ambient_old_raw in mlx90632_read_temp_raw() is %d or %x\n\n\r",ambient_old_raw,ambient_old_raw);
 
-        				printLog("initial ambient is %f or %x\n\r",ambient,ambient);
-        				double ambient_remainder = modf(ambient,&ambient);
-        				int16_t ambient_int;
-        				uint8_t ambient_remainder_Uint;
+        				ambient_GND = mlx90632_calc_temp_ambient(ambient_new_raw_GND, ambient_old_raw_GND, P_T, P_R, P_G, P_O, Gb);
+        				/* Get preprocessed temperatures needed for object temperature calculation */
+        				double pre_ambient_GND = mlx90632_preprocess_temp_ambient(ambient_new_raw_GND, ambient_old_raw_GND, Gb);
+        				double pre_object_GND = mlx90632_preprocess_temp_object(object_new_raw_GND, object_old_raw_GND,ambient_new_raw_GND, ambient_old_raw_GND,Ka);
+        				/* Calculate object temperature */
+        				object_GND = mlx90632_calc_temp_object(pre_object_GND, pre_ambient_GND, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
+        				printLog("ambient_GND is : %f - %x    object_GND is : %f - %x \n\r", ambient_GND,ambient_GND,object_GND,object_GND);
+        				///!!!printLog("int ambient GND is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
 
-        				ambient_int = (int16_t)ambient;
+        /////////////////VDD SENSOR AMBIENT CONVERSION FOR TRANSMISSION
+        				//////////// The method of storing double might differ from device to device.
+        				//////////// Hence,  double is split into integer and decimal points and stored and converted integers
+        				///!!!printLog("initial ambient is %f or %x\n\r",ambient,ambient);
+        				double ambient_remainder_VDD = modf(ambient_VDD,&ambient_VDD);
+        				int16_t ambient_int_VDD;
+        				uint8_t ambient_remainder_Uint_VDD;
+
+
+        				ambient_int_VDD = (int16_t)ambient_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
-        				ambient_remainder_Uint = abs((uint8_t) (ambient_remainder*100));
+        				ambient_remainder_Uint_VDD = abs((uint8_t) (ambient_remainder_VDD*100));
 
-        				printLog("ambient is %f or %x\n\r",ambient,ambient);
-        				printLog("ambient remainder is %f or %x\n\r",ambient_remainder,ambient_remainder);
-        				printLog("ambient_int is %d or %x\n\r",ambient_int,ambient_int);
-        				printLog("ambient_int remainder is %d or %x\n\r",ambient_remainder_Uint,ambient_remainder_Uint);
-
-
-
-        				ambient_hex[2] = ambient_remainder_Uint;
-        				ambient_hex[1] = ambient_int;
-        				ambient_hex[0] = ambient_int >> 8;
+        				///!!!printLog("ambient is %f or %x\n\r",ambient,ambient);
+        				///!!!printLog("ambient remainder is %f or %x\n\r",ambient_remainder,ambient_remainder);
+        				///!!!printLog("ambient_int is %d or %x\n\r",ambient_int,ambient_int);
+        				///!!!printLog("ambient_int remainder is %d or %x\n\r",ambient_remainder_Uint,ambient_remainder_Uint);
 
 
-//////////// The method of storing double might differ from device to device.
-//////////// Hence,  double is split into integer and decimal points and stored and converted integers
 
-        				printLog("initial object is %f or %x\n\r",object,object);
-        				double object_remainder = modf(object,&object);
-        				int16_t object_int;
-        				uint8_t object_remainder_Uint;
-        				object_int = (int16_t)object;
+        				ambient_hex_VDD[2] = ambient_remainder_Uint_VDD;
+        				ambient_hex_VDD[1] = ambient_int_VDD;
+        				ambient_hex_VDD[0] = ambient_int_VDD >> 8;
+
+
+
+         /////////////////VDD SENSOR OBJECT CONVERSION FOR TRANSMISSION
+        				///!!!printLog("initial object is %f or %x\n\r",object,object);
+        				double object_remainder_VDD = modf(object_VDD,&object_VDD);
+        				int16_t object_int_VDD;
+        				uint8_t object_remainder_Uint_VDD;
+        				object_int_VDD = (int16_t)object_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
-        				object_remainder_Uint = abs((uint8_t) (object_remainder*100));
+        				object_remainder_Uint_VDD = abs((uint8_t) (object_remainder_VDD*100));
 
-        				object_hex[2] = object_remainder_Uint;
-        				object_hex[1] = object_int;
-        				object_hex[0] = object_int >> 8;
-        				printLog("object is %f or %x\n\r",object,object);
-        				printLog("object remainder is %f or %x\n\r",object_remainder,object_remainder);
-        				printLog("object_int is %d or %x\n\r",object_int,object_int);
-        				printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
+        				object_hex_VDD[2] = object_remainder_Uint_VDD;
+        				object_hex_VDD[1] = object_int_VDD;
+        				object_hex_VDD[0] = object_int_VDD >> 8;
+        				///!!!printLog("object is %f or %x\n\r",object,object);
+        				///!!!printLog("object remainder is %f or %x\n\r",object_remainder,object_remainder);
+        				///!!!printLog("object_int is %d or %x\n\r",object_int,object_int);
+        				///!!!printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
+
+		/////////////////GND SENSOR AMBIENT CONVERSION FOR TRANSMISSION
+
+						double ambient_remainder_GND = modf(ambient_GND,&ambient_GND);
+						int16_t ambient_int_GND;
+						uint8_t ambient_remainder_Uint_GND;
+						ambient_int_GND = (int16_t)ambient_GND;
+						ambient_remainder_Uint_GND = abs((uint8_t) (ambient_remainder_GND*100));
+
+						ambient_hex_GND[2] = ambient_remainder_Uint_GND;
+						ambient_hex_GND[1] = ambient_int_GND;
+						ambient_hex_GND[0] = ambient_int_GND >> 8;
+
+		 /////////////////GND SENSOR OBJECT CONVERSION FOR TRANSMISSION
+
+						double object_remainder_GND = modf(object_GND,&object_GND);
+						int16_t object_int_GND;
+						uint8_t object_remainder_Uint_GND;
+						object_int_GND = (int16_t)object_GND;
+						object_remainder_Uint_GND = abs((uint8_t) (object_remainder_GND*100));
+
+						object_hex_GND[2] = object_remainder_Uint_GND;
+						object_hex_GND[1] = object_int_GND;
+						object_hex_GND[0] = object_int_GND >> 8;
+
+
+
 
 
 						 //// doesnt work without soft timer, needs to have a break to send the data
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic, 3, (const uint8*)&ambient_hex);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic, 3, (const uint8*)&object_hex);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
+
 
 
         }
