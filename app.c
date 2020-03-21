@@ -161,8 +161,9 @@ void appMain(gecko_configuration_t *pconfig)
 	      /* Set Top Value */
 	      TIMER_TopSet(TIMER0, CMU_ClockFreqGet(cmuClock_HFPER)/PWM_FREQ);
 	      /* Set compare value starting at 0 - it will be incremented in the interrupt handler */
-	      TIMER_CompareBufSet(TIMER0, 0, 290);
-	      TIMER_CompareBufSet(TIMER0, 1, 580);
+	      /////// (DC=591, 99.2%=590)
+	      TIMER_CompareBufSet(TIMER0, 0, 1);
+	      TIMER_CompareBufSet(TIMER0, 1, 1);
 
 
 	      /* Select timer parameters */
@@ -331,6 +332,10 @@ void appMain(gecko_configuration_t *pconfig)
 
 
         int32_t ret = 0;
+        uint8_t front_TR_PWM;
+		uint8_t back_TR_PWM;
+       	front_TR_PWM = 5;
+		back_TR_PWM = 5;
         double ambient_VDD;
         double ambient_GND;
         double object_VDD;
@@ -359,7 +364,6 @@ void appMain(gecko_configuration_t *pconfig)
       case gecko_evt_le_connection_opened_id:
 
         printLog("connection opened\r\n");
-
         gecko_cmd_hardware_set_soft_timer(40000,0,0);
 
         /* Read sensor EEPROM registers needed for calcualtions */
@@ -372,8 +376,10 @@ void appMain(gecko_configuration_t *pconfig)
 
         if (evt->data.evt_hardware_soft_timer.handle == 0) {
 
-
-
+	       	front_TR_PWM = front_TR_PWM;
+			back_TR_PWM = back_TR_PWM;
+	       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM);
+	       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM);
        //////////////// VDD SENSOR READING (AMBIENT AND OBJECT)
         				ret = mlx90632_read_temp_raw(Sensor_VDD, &ambient_new_raw_VDD, &ambient_old_raw_VDD,
         											 &object_new_raw_VDD, &object_old_raw_VDD);
@@ -489,13 +495,21 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-
-
+						front_TR_PWM = front_TR_PWM + 1;
+						const uint8_t front_TR_PWM_out = front_TR_PWM;
+						back_TR_PWM = back_TR_PWM + 1;
+						const uint8_t back_TR_PWM_out = back_TR_PWM;
 						 //// doesnt work without soft timer, needs to have a break to send the data
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_out);
+        		       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM_out);
+        		       	TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM*5.91);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_out);
+        		       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM);
+        		       	TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM*5.91);
 
 
 
@@ -517,7 +531,24 @@ void appMain(gecko_configuration_t *pconfig)
         }
         break;
 
-      /* Events related to OTA upgrading
+
+      case gecko_evt_gatt_server_attribute_value_id:
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Front_TR_PWM_IN){
+                	front_TR_PWM = 0;
+    		       	printLog("IM IN gecko_evt_gatt_server_attribute_value_id \n\r");
+                	front_TR_PWM = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+
+                }
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Back_TR_PWM_IN){
+                	back_TR_PWM = 0;
+                	back_TR_PWM = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+
+                }
+                break;
+
+
+
+       /* Events related to OTA upgrading
          ----------------------------------------------------------------------------- */
 
       /* Check if the user-type OTA Control Characteristic was written.
