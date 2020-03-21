@@ -74,7 +74,7 @@
     <characteristic id="Back_TR_PWM_IN" name="Back_TR_PWM_IN Characteristic" sourceId="custom.type" uuid="8eb124d6-afaf-4b75-a83f-a14b61b241a4">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>
-      <properties write="true" write_requirement="optional"/>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
     
     <!--Front_TR_PWM_OUT Characteristic-->
@@ -88,7 +88,7 @@
     <characteristic id="Front_TR_PWM_IN" name="Front_TR_PWM_IN Characteristic" sourceId="custom.type" uuid="f79f7794-bfd5-455d-a1ae-b97d4b17774a">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>
-      <properties write="true" write_requirement="optional"/>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
     
     <!--Ambient_GND-->

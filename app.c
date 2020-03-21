@@ -495,19 +495,18 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-						front_TR_PWM = front_TR_PWM + 1;
+
 						const uint8_t front_TR_PWM_out = front_TR_PWM;
-						back_TR_PWM = back_TR_PWM + 1;
 						const uint8_t back_TR_PWM_out = back_TR_PWM;
 						 //// doesnt work without soft timer, needs to have a break to send the data
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_out);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_out);
         		       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM_out);
         		       	TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM*5.91);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_out);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_out);
         		       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM);
         		       	TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM*5.91);
 
