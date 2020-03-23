@@ -503,21 +503,23 @@ void appMain(gecko_configuration_t *pconfig)
 						object_hex_GND[0] = object_int_GND >> 8;
 
 		//////////////// GETTING THE TIMESTAMP
+						// Reset the timeStamp. Zero will be sent if isRecording Flag is False!
 						deltaTimeStamp = 0;
-						if (isRecording == 1){
-						// Get the current time for the time stamp
-						currentTimeStamp = GetTimeStamp();
-        		       	printLog("currentTimeStamp is : %ld \n\r", currentTimeStamp);
-						// Substract the start of the recoirding time from current time stamp
-						deltaTimeStamp = currentTimeStamp - startOfRecordingTimeStamp;
-        		       	printLog("startOfRecordingTimeStamp is : %ld \n\r", startOfRecordingTimeStamp);
-        		       	printLog("deltaTimeStamp is : %ld \n\r", deltaTimeStamp);
+						// Only assign values to time stamp if isRecording flag is true
+							if (isRecording == 1){
+							// Get the current time for the time stamp
+							currentTimeStamp = GetTimeStamp();
+							printLog("currentTimeStamp is : %ld \n\r", currentTimeStamp);
+							// Substract the start of the recoirding time from current time stamp
+							deltaTimeStamp = currentTimeStamp - startOfRecordingTimeStamp;
+							printLog("startOfRecordingTimeStamp is : %ld \n\r", startOfRecordingTimeStamp);
+							printLog("deltaTimeStamp is : %ld \n\r", deltaTimeStamp);
 						}
-
 						// Split the delta timestamp into 8bit pieces and put them into the array for the future transmission via bluetooth
 						for(int i = 0; i < 4; i++) {
 							timeStampArr[3-i] = (deltaTimeStamp >> (8*i)) & 0xFF;
 						};
+
 
           /////////////////  UPDATING THE DUCY CYCLE ON TRANSISTORS
 						const uint8_t front_TR_PWM_out = front_TR_PWM;
