@@ -71,7 +71,8 @@ uint16_t Sensor_VDD = 0x3B << 1;
 
 /// void printTime();
 
-
+// TimeStamp fuction Prototype
+uint32_t GetTimeStamp();
 
 /* Print boot message */
 static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt);
@@ -330,7 +331,7 @@ void appMain(gecko_configuration_t *pconfig)
 	    mlx90632_i2c_write(I2C0,Sensor_VDD,MLX90632_REG_STATUS, reg_status | 0x0100);
 
 
-
+	    // variables definitions
         int32_t ret = 0;
         uint8_t front_TR_PWM;
 		uint8_t back_TR_PWM;
@@ -344,6 +345,14 @@ void appMain(gecko_configuration_t *pconfig)
         uint8_t ambient_hex_GND[3];
         uint8_t object_hex_VDD[3];
         uint8_t object_hex_GND[3];
+
+        uint32_t deltaTimeStamp;
+        uint32_t currentTimeStamp;
+        uint32_t startOfRecordingTimeStamp = 0;
+        uint8_t timeStampArr[4];
+
+        uint8_t isRecording = 0;
+        uint8_t modeOfOperation = 0;
 
 
 
@@ -493,22 +502,40 @@ void appMain(gecko_configuration_t *pconfig)
 						object_hex_GND[1] = object_int_GND;
 						object_hex_GND[0] = object_int_GND >> 8;
 
+		//////////////// GETTING THE TIMESTAMP
+						deltaTimeStamp = 0;
+						if (isRecording == 1){
+						// Get the current time for the time stamp
+						currentTimeStamp = GetTimeStamp();
+        		       	printLog("currentTimeStamp is : %ld \n\r", currentTimeStamp);
+						// Substract the start of the recoirding time from current time stamp
+						deltaTimeStamp = currentTimeStamp - startOfRecordingTimeStamp;
+        		       	printLog("startOfRecordingTimeStamp is : %ld \n\r", startOfRecordingTimeStamp);
+        		       	printLog("deltaTimeStamp is : %ld \n\r", deltaTimeStamp);
+						}
 
+						// Split the delta timestamp into 8bit pieces and put them into the array for the future transmission via bluetooth
+						for(int i = 0; i < 4; i++) {
+							timeStampArr[3-i] = (deltaTimeStamp >> (8*i)) & 0xFF;
+						};
 
-
+          /////////////////  UPDATING THE DUCY CYCLE ON TRANSISTORS
 						const uint8_t front_TR_PWM_out = front_TR_PWM;
 						const uint8_t back_TR_PWM_out = back_TR_PWM;
+						TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM*5.91);
+						TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM*5.91);
+
+
+
+		 ///////////////// 	SENDING DATA AS NOTIFICATIONS
 						 //// doesnt work without soft timer, needs to have a break to send the data
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_TimeStamp, 4, (const uint8*)&timeStampArr);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_out);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_out);
+          		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_out);
-        		       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM_out);
-        		       	TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM*5.91);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_out);
-        		       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM);
-        		       	TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM*5.91);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
 
 
 
@@ -530,7 +557,7 @@ void appMain(gecko_configuration_t *pconfig)
         }
         break;
 
-
+      // If the phone app did update any of characteristics
       case gecko_evt_gatt_server_attribute_value_id:
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Front_TR_PWM_IN){
                 	front_TR_PWM = 0;
@@ -541,6 +568,35 @@ void appMain(gecko_configuration_t *pconfig)
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Back_TR_PWM_IN){
                 	back_TR_PWM = 0;
                 	back_TR_PWM = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+
+                }
+                // If the app initiated Recording
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_isRecording){
+                	isRecording = 0;
+                	isRecording = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+                	// If Recording is True, update the startOfRecordingTimeStamp
+                	if (isRecording == 1){
+                		startOfRecordingTimeStamp = GetTimeStamp();
+                		}
+                	}
+
+                // If Mode or Record value has changed
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_modeOfOperation){
+                	modeOfOperation = 0;
+                	modeOfOperation = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+
+                	switch(modeOfOperation){
+                	case(0):
+                			// Automatic mode, user duty cycle regulation is disabled
+                			// ADD
+                			break;
+                	case(1):
+                			// Manual mode, user duty cycle regulation is enabled
+							// ADD
+                			break;
+                    default:
+                    	break;
+                	}
 
                 }
                 break;
@@ -576,22 +632,71 @@ void appMain(gecko_configuration_t *pconfig)
   }
 }
 
-/* Print stack version and local Bluetooth address as boot message */
-static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt)
-{
-#if DEBUG_LEVEL
-  bd_addr local_addr;
-  int i;
 
-  printLog("stack version: %u.%u.%u\r\n", bootevt->major, bootevt->minor, bootevt->patch);
-  local_addr = gecko_cmd_system_get_bt_address()->address;
 
-  printLog("local BT device address: ");
-  for (i = 0; i < 5; i++) {
-    printLog("%2.2x:", local_addr.addr[5 - i]);
+
+  uint32_t GetTimeStamp(){
+    	/// Declare variable to store calculated days,hours,mins,secs and millisecs.
+    	uint8_t days,hours,mins,sec,ms;
+    	/// Also declare variables to store the total number of seconds and milliseconds
+    	/// elapsed from the chip's power-up.
+    	/// End goal is to keep the total elapsed time in one variable, so that it is easier
+    	/// to send it via Bluetooth Low energy
+    	uint32_t total_sec;
+    	uint32_t total_MS;
+
+    	/// Get time function and store in a special time variable
+    	struct gecko_msg_hardware_get_time_rsp_t* time = gecko_cmd_hardware_get_time();
+
+    	/// Here we will calculate separately number of days,hours,mins,secs elapsed
+    	/// So we can print it in an understandable form
+    	days = time->seconds/60/60/24;
+    	hours = time->seconds/60/60 % 24;
+    	mins = time->seconds/60 % 60;
+    	sec = time->seconds % 60;
+    	/// In order to obtain millisecond passed we have to get it from the number of clock ticks elapsed.
+    	/// *100 defines how many significant figures to keep - 2 in our case,
+    	/// while division by 32768 is required to convert clock ticks into milliseconds.
+    	ms = time->ticks * 100 / 32768;
+
+    	/// Print passed days,hours,mins,secs and millisecs in usual form.
+    	printLog("%03d-%02d:%02d:%02d.%02d \n\r",days,hours,mins,sec,ms);
+
+
+    	/// We will also fill the variable that stores total time in milliseconds.
+    	/// total_MS later will be used to send the timestamp over BLE.
+    	total_sec = time->seconds ;
+    	total_MS = (total_sec * 100) + ms;
+    	/// Print the total time in milliseconds in decimal and hex for later comparison and
+    	/// debug with the received variable on a PC
+    	printLog("total_MS: decimal - %ld,   hex - %x\n\r",total_MS,total_MS);
+
+    	/// Function returns the total time in milliseconds
+    	return total_MS;
   }
-  printLog("%2.2x\r\n", local_addr.addr[0]);
-#endif
-}
+
+
+  /* Print stack version and local Bluetooth address as boot message */
+  static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt)
+  {
+  #if DEBUG_LEVEL
+    bd_addr local_addr;
+    int i;
+
+    printLog("stack version: %u.%u.%u\r\n", bootevt->major, bootevt->minor, bootevt->patch);
+    local_addr = gecko_cmd_system_get_bt_address()->address;
+
+    printLog("local BT device address: ");
+    for (i = 0; i < 5; i++) {
+      printLog("%2.2x:", local_addr.addr[5 - i]);
+    }
+    printLog("%2.2x\r\n", local_addr.addr[0]);
+  #endif
+  }
+
+
+
+
+
 
 

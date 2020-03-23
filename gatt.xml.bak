@@ -63,6 +63,27 @@
   <service advertise="true" name="Temperature" requirement="mandatory" sourceId="custom.type" type="primary" uuid="1b39bd78-2b85-4bdc-b469-385e1804deb4">
     <informativeText>Custom service</informativeText>
     
+    <!--TimeStamp Characteristic-->
+    <characteristic id="TimeStamp" name="TimeStamp Characteristic" sourceId="custom.type" uuid="09dcd516-9e99-46bb-82b6-460838ae7c83">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="4" type="hex" variable_length="false">0x00</value>
+      <properties notify="true" notify_requirement="optional"/>
+    </characteristic>
+    
+    <!--ModeOfOperation Characterisitc-->
+    <characteristic id="modeOfOperation" name="ModeOfOperation Characterisitc" sourceId="custom.type" uuid="3e26de8c-9fdd-4b39-8b48-a93b90c0a93f">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="1" type="hex" variable_length="false">0x00</value>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
+    </characteristic>
+    
+    <!--isRecording Characteristic-->
+    <characteristic id="isRecording" name="isRecording Characteristic" sourceId="custom.type" uuid="84a3a9a6-04d0-440a-ad72-1395572d8924">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="1" type="hex" variable_length="false">0x00</value>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
+    </characteristic>
+    
     <!--Back_TR_PWM_OUT Characteristic-->
     <characteristic id="Back_TR_PWM_OUT" name="Back_TR_PWM_OUT Characteristic" sourceId="custom.type" uuid="c7bd8529-02ff-481f-a8bc-5b5c34357bc2">
       <informativeText>Custom characteristic</informativeText>
@@ -74,7 +95,7 @@
     <characteristic id="Back_TR_PWM_IN" name="Back_TR_PWM_IN Characteristic" sourceId="custom.type" uuid="8eb124d6-afaf-4b75-a83f-a14b61b241a4">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>
-      <properties write="true" write_requirement="optional"/>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
     
     <!--Front_TR_PWM_OUT Characteristic-->
@@ -88,7 +109,7 @@
     <characteristic id="Front_TR_PWM_IN" name="Front_TR_PWM_IN Characteristic" sourceId="custom.type" uuid="f79f7794-bfd5-455d-a1ae-b97d4b17774a">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>
-      <properties write="true" write_requirement="optional"/>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
     
     <!--Ambient_GND-->
