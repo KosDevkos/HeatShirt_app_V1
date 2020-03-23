@@ -63,6 +63,34 @@
   <service advertise="true" name="Temperature" requirement="mandatory" sourceId="custom.type" type="primary" uuid="1b39bd78-2b85-4bdc-b469-385e1804deb4">
     <informativeText>Custom service</informativeText>
     
+    <!--Back_TR_PWM_OUT Characteristic-->
+    <characteristic id="Back_TR_PWM_OUT" name="Back_TR_PWM_OUT Characteristic" sourceId="custom.type" uuid="c7bd8529-02ff-481f-a8bc-5b5c34357bc2">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="1" type="hex" variable_length="false">0x00</value>
+      <properties notify="true" notify_requirement="optional"/>
+    </characteristic>
+    
+    <!--Back_TR_PWM_IN Characteristic-->
+    <characteristic id="Back_TR_PWM_IN" name="Back_TR_PWM_IN Characteristic" sourceId="custom.type" uuid="8eb124d6-afaf-4b75-a83f-a14b61b241a4">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="1" type="hex" variable_length="false">0x00</value>
+      <properties write="true" write_requirement="optional"/>
+    </characteristic>
+    
+    <!--Front_TR_PWM_OUT Characteristic-->
+    <characteristic id="Front_TR_PWM_OUT" name="Front_TR_PWM_OUT Characteristic" sourceId="custom.type" uuid="3d586659-fd18-43c7-88ad-d386dab601e3">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="1" type="hex" variable_length="false">0x00</value>
+      <properties notify="true" notify_requirement="optional"/>
+    </characteristic>
+    
+    <!--Front_TR_PWM_IN Characteristic-->
+    <characteristic id="Front_TR_PWM_IN" name="Front_TR_PWM_IN Characteristic" sourceId="custom.type" uuid="f79f7794-bfd5-455d-a1ae-b97d4b17774a">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="1" type="hex" variable_length="false">0x00</value>
+      <properties write="true" write_requirement="optional"/>
+    </characteristic>
+    
     <!--Ambient_GND-->
     <characteristic id="Ambient_characteristic_GND" name="Ambient_GND" sourceId="custom.type" uuid="4cd89f16-d93e-4a3e-b467-00e514a40d2e">
       <informativeText>Custom characteristic</informativeText>
