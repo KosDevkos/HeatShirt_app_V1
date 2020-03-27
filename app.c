@@ -115,6 +115,51 @@ void appMain(gecko_configuration_t *pconfig)
 
         bootMessage(&(evt->data.evt_system_boot));
 
+
+ ////////////// VARIABLES DEFINITIONS
+
+                int32_t ret = 0;
+
+                uint8_t front_TR_PWM_Local;
+        		uint8_t back_TR_PWM_Local;
+               	front_TR_PWM_Local = 5;
+        		back_TR_PWM_Local = 5;
+        		uint8_t front_TR_PWM_In;
+        		uint8_t back_TR_PWM_In;
+
+                double ambient_VDD;
+                double ambient_GND;
+                double object_VDD;
+                double object_GND;
+                uint8_t ambient_hex_VDD[3];
+                uint8_t ambient_hex_GND[3];
+                uint8_t object_hex_VDD[3];
+                uint8_t object_hex_GND[3];
+
+                uint32_t deltaTimeStamp;
+                uint32_t currentTimeStamp;
+                uint32_t startOfRecordingTimeStamp = 0;
+                uint8_t timeStampArr[4];
+
+                uint8_t isRecording = 0;
+                uint8_t modeOfOperation = 0;
+
+
+        		I2C_TransferReturn_TypeDef transfer_status;
+
+                int16_t object_new_raw_GND;
+        		int16_t object_old_raw_GND;
+        		int16_t ambient_new_raw_GND;
+        		int16_t ambient_old_raw_GND;
+                int16_t object_new_raw_VDD;
+        		int16_t object_old_raw_VDD;
+        		int16_t ambient_new_raw_VDD;
+        		int16_t ambient_old_raw_VDD;
+
+
+///////////// PWM TIMERS SETUP
+
+
         /* Enable clock for TIMER0 module */
         CMU_ClockEnable(cmuClock_TIMER0, true);
 
@@ -197,7 +242,7 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-
+///////////// I2C SETUP
 		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
 
 
@@ -215,18 +260,12 @@ void appMain(gecko_configuration_t *pconfig)
 		   I2CSPM_Init(&myi2cinit);
 
 
-		I2C_TransferReturn_TypeDef transfer_status;
 
-        int16_t object_new_raw_GND;
-		int16_t object_old_raw_GND;
-		int16_t ambient_new_raw_GND;
-		int16_t ambient_old_raw_GND;
-        int16_t object_new_raw_VDD;
-		int16_t object_old_raw_VDD;
-		int16_t ambient_new_raw_VDD;
-		int16_t ambient_old_raw_VDD;
 
 		usleep(10,10);
+
+
+///////// I2C SESORS CONSTANTS EXTRACTION
 
 		int32_t P_T;
 		uint16_t P_T_MS;
@@ -331,28 +370,7 @@ void appMain(gecko_configuration_t *pconfig)
 	    mlx90632_i2c_write(I2C0,Sensor_VDD,MLX90632_REG_STATUS, reg_status | 0x0100);
 
 
-	    // variables definitions
-        int32_t ret = 0;
-        uint8_t front_TR_PWM;
-		uint8_t back_TR_PWM;
-       	front_TR_PWM = 5;
-		back_TR_PWM = 5;
-        double ambient_VDD;
-        double ambient_GND;
-        double object_VDD;
-        double object_GND;
-        uint8_t ambient_hex_VDD[3];
-        uint8_t ambient_hex_GND[3];
-        uint8_t object_hex_VDD[3];
-        uint8_t object_hex_GND[3];
 
-        uint32_t deltaTimeStamp;
-        uint32_t currentTimeStamp;
-        uint32_t startOfRecordingTimeStamp = 0;
-        uint8_t timeStampArr[4];
-
-        uint8_t isRecording = 0;
-        uint8_t modeOfOperation = 0;
 
 
 
@@ -373,7 +391,7 @@ void appMain(gecko_configuration_t *pconfig)
       case gecko_evt_le_connection_opened_id:
 
         printLog("connection opened\r\n");
-        gecko_cmd_hardware_set_soft_timer(40000,0,0);
+        gecko_cmd_hardware_set_soft_timer(50000,0,0);
 
         /* Read sensor EEPROM registers needed for calcualtions */
         /* Now we read current ambient and object temperature */
@@ -385,10 +403,8 @@ void appMain(gecko_configuration_t *pconfig)
 
         if (evt->data.evt_hardware_soft_timer.handle == 0) {
 
-	       	front_TR_PWM = front_TR_PWM;
-			back_TR_PWM = back_TR_PWM;
-	       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM);
-	       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM);
+	       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM_Local);
+	       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM_Local);
        //////////////// VDD SENSOR READING (AMBIENT AND OBJECT)
         				ret = mlx90632_read_temp_raw(Sensor_VDD, &ambient_new_raw_VDD, &ambient_old_raw_VDD,
         											 &object_new_raw_VDD, &object_old_raw_VDD);
@@ -521,19 +537,44 @@ void appMain(gecko_configuration_t *pconfig)
 						};
 
 
-          /////////////////  UPDATING THE DUCY CYCLE ON TRANSISTORS
-						const uint8_t front_TR_PWM_out = front_TR_PWM;
-						const uint8_t back_TR_PWM_out = back_TR_PWM;
-						TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM*5.91);
-						TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM*5.91);
+          /////////////////  RECALCULATING AND UPDATING THE DUCY CYCLE ON TRANSISTORS
 
+						if (modeOfOperation == 0){ 			// Automatic mode
+							if (object_VDD >= 30 ){
+								front_TR_PWM_Local = 0;
+							}else{
+								front_TR_PWM_Local = 80;
+							}
+
+							if (object_GND >= 30){
+								back_TR_PWM_Local = 0;
+							}else{
+								back_TR_PWM_Local = 80;
+							}
+
+
+						}else if (modeOfOperation == 1){	// Manual mode
+							front_TR_PWM_Local = front_TR_PWM_In;
+							back_TR_PWM_Local = back_TR_PWM_In;
+						}else{
+							printLog("Error: wrong mode of operation - %d", modeOfOperation);
+						}
+
+
+						// Set calculated Duty Cycle to transistors
+						TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM_Local*5.91);
+						TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM_Local*5.91);
+
+						// Required, so the gecko_cmd_gatt_server_send_characteristic_notification won't rewrite front_TR_PWM variable
+						const uint8_t front_TR_PWM_Out = front_TR_PWM_Local;
+						const uint8_t back_TR_PWM_Out = back_TR_PWM_Local;
 
 
 		 ///////////////// 	SENDING DATA AS NOTIFICATIONS
 						 //// doesnt work without soft timer, needs to have a break to send the data
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_TimeStamp, 4, (const uint8*)&timeStampArr);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_out);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_out);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_Out);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_Out);
           		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
@@ -562,14 +603,14 @@ void appMain(gecko_configuration_t *pconfig)
       // If the phone app did update any of characteristics
       case gecko_evt_gatt_server_attribute_value_id:
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Front_TR_PWM_IN){
-                	front_TR_PWM = 0;
+                	front_TR_PWM_In = 0;
     		       	printLog("IM IN gecko_evt_gatt_server_attribute_value_id \n\r");
-                	front_TR_PWM = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+                	front_TR_PWM_In = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
 
                 }
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Back_TR_PWM_IN){
-                	back_TR_PWM = 0;
-                	back_TR_PWM = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+                	back_TR_PWM_In = 0;
+                	back_TR_PWM_In = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
 
                 }
                 // If the app initiated Recording
