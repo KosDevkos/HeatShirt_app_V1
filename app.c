@@ -69,7 +69,7 @@ uint16_t Sensor_VDD = 0x3B << 1;
 // this PWM_FREQ = 65000 creates about 1kHz signal.
 #define PWM_FREQ 65000
 //
-#define MOVING_AVG_BUFFER 20
+#define MOVING_AVG_BUFFER 5
 
 /// void printTime();
 
@@ -82,9 +82,60 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 
 ////////// GLOBAL VARIABLES
 
-double arrNumbers_VDD[MOVING_AVG_BUFFER] = {0};
-double arrNumbers_GND[MOVING_AVG_BUFFER] = {0};
 
+
+int32_t ret = 0;
+
+uint8_t front_TR_PWM_Local= 5;
+uint8_t back_TR_PWM_Local= 5;
+uint8_t front_TR_PWM_In;
+uint8_t back_TR_PWM_In;
+
+double ambient_VDD;
+double ambient_GND;
+double object_VDD;
+double object_GND;
+uint8_t ambient_hex_VDD[3];
+uint8_t ambient_hex_GND[3];
+uint8_t object_hex_VDD[3];
+uint8_t object_hex_GND[3];
+
+// PID Var
+float integral_VDD = 0;
+float previous_error_VDD = 0;
+float integral_GND = 0;
+float previous_error_GND = 0;
+
+
+ //////////// MOVING AVARAGE FILTER var
+ int pos = 0;
+ double newAvg_object_VDD = 32;
+ double newAvg_object_GND = 32;
+ double sum_VDD = 0;
+ double sum_GND = 0;
+ double arrNumbers_VDD[MOVING_AVG_BUFFER] = {0};
+ double arrNumbers_GND[MOVING_AVG_BUFFER] = {0};
+
+
+uint32_t deltaTimeStamp;
+uint32_t currentTimeStamp;
+uint32_t startOfRecordingTimeStamp = 0;
+uint8_t timeStampArr[4];
+
+uint8_t isRecording = 0;
+uint8_t modeOfOperation = 0;
+
+
+I2C_TransferReturn_TypeDef transfer_status;
+
+int16_t object_new_raw_GND;
+int16_t object_old_raw_GND;
+int16_t ambient_new_raw_GND;
+int16_t ambient_old_raw_GND;
+int16_t object_new_raw_VDD;
+int16_t object_old_raw_VDD;
+int16_t ambient_new_raw_VDD;
+int16_t ambient_old_raw_VDD;
 
 
 
@@ -132,57 +183,7 @@ void appMain(gecko_configuration_t *pconfig)
 
 
  ////////////// VARIABLES DEFINITIONS
-        int32_t ret = 0;
 
-        uint8_t front_TR_PWM_Local;
-        uint8_t back_TR_PWM_Local;
-        front_TR_PWM_Local = 5;
-        back_TR_PWM_Local = 5;
-        uint8_t front_TR_PWM_In;
-        uint8_t back_TR_PWM_In;
-
-        double ambient_VDD;
-        double ambient_GND;
-        double object_VDD;
-        double object_GND;
-        uint8_t ambient_hex_VDD[3];
-        uint8_t ambient_hex_GND[3];
-        uint8_t object_hex_VDD[3];
-        uint8_t object_hex_GND[3];
-
-        // PID Var
-        float integral_VDD = 0;
-        float previous_error_VDD = 0;
-        float integral_GND = 0;
-        float previous_error_GND = 0;
-
-
-         // MOVING AVARAGE FILTER var
-         int pos = 0;
-         double newAvg_object_VDD = 0;
-         double sum = 0;
-
-         int len = 20;
-
-        uint32_t deltaTimeStamp;
-        uint32_t currentTimeStamp;
-        uint32_t startOfRecordingTimeStamp = 0;
-        uint8_t timeStampArr[4];
-
-        uint8_t isRecording = 0;
-        uint8_t modeOfOperation = 0;
-
-
-        I2C_TransferReturn_TypeDef transfer_status;
-
-        int16_t object_new_raw_GND;
-        int16_t object_old_raw_GND;
-        int16_t ambient_new_raw_GND;
-        int16_t ambient_old_raw_GND;
-        int16_t object_new_raw_VDD;
-        int16_t object_old_raw_VDD;
-        int16_t ambient_new_raw_VDD;
-        int16_t ambient_old_raw_VDD;
 
 
 ///////////// PWM TIMERS SETUP
@@ -482,25 +483,20 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 	////////////////////// MOVING AVERAGE FILTER
-        				  // Caclulate the size of a buffer for the moving average filter
 
 
 						  // Upated the sum of a buffer for the moving average filter
 						  //Subtract the oldest number from the prev sum, add the new number
-						  printLog("sum is %lf, arrNumbers[pos] is %lf, object_VDD is %lf \n\r", sum, arrNumbers_VDD[pos], object_VDD );
-						  sum = sum - arrNumbers_VDD[pos] + object_VDD;
-						  printLog("New sum is %lf \n\r", sum);
-
+						  sum_VDD = sum_VDD - arrNumbers_VDD[pos] + object_VDD;
+						  sum_GND = sum_GND - arrNumbers_GND[pos] + object_GND;
 						  //Assign the nextNum to the position in the array
 						  arrNumbers_VDD[pos] = object_VDD;
-						  printLog("New arrNumbers[pos] is %lf; pos is %d\n\r", arrNumbers_VDD[pos], pos);
-
+						  arrNumbers_GND[pos] = object_GND;
 						  //return the average
-						  newAvg_object_VDD = sum / len;
-
-						  printf("The new average is %lf \n\r", newAvg_object_VDD);
+						  newAvg_object_VDD = sum_VDD / MOVING_AVG_BUFFER;
+						  newAvg_object_GND = sum_GND / MOVING_AVG_BUFFER;
 						  pos++;
-						  if (pos >= len) pos = 0;
+						  if (pos >= MOVING_AVG_BUFFER) pos = 0;
 
 
 
@@ -508,24 +504,17 @@ void appMain(gecko_configuration_t *pconfig)
         /////////////////VDD SENSOR AMBIENT CONVERSION FOR TRANSMISSION
         				//////////// The method of storing double might differ from device to device.
         				//////////// Hence,  double is split into integer and decimal points and stored and converted integers
-        				///!!!printLog("initial ambient is %f or %x\n\r",ambient,ambient);
 
-						double ambient_VDD_buffer = object_VDD; 				// !!!!!!!!!!ambient_VDD;
+						double ambient_VDD_buffer = ambient_VDD;
         				double ambient_remainder_VDD = modf(ambient_VDD_buffer,&ambient_VDD_buffer);
         				int16_t ambient_int_VDD;
         				uint8_t ambient_remainder_Uint_VDD;
 
 
-        				ambient_int_VDD = (int16_t) object_VDD; 	  /////////////ambient_VDD;
+        				ambient_int_VDD = (int16_t) ambient_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
         				ambient_remainder_Uint_VDD = abs((uint8_t) (ambient_remainder_VDD*100));
-
-        				///!!!printLog("ambient is %f or %x\n\r",ambient,ambient);
-        				///!!!printLog("ambient remainder is %f or %x\n\r",ambient_remainder,ambient_remainder);
-        				///!!!printLog("ambient_int is %d or %x\n\r",ambient_int,ambient_int);
-        				///!!!printLog("ambient_int remainder is %d or %x\n\r",ambient_remainder_Uint,ambient_remainder_Uint);
-
 
 
         				ambient_hex_VDD[2] = ambient_remainder_Uint_VDD;
@@ -533,9 +522,20 @@ void appMain(gecko_configuration_t *pconfig)
         				ambient_hex_VDD[0] = ambient_int_VDD >> 8;
 
 
+		 /////////////////GND SENSOR OBJECT CONVERSION FOR TRANSMISSION
+						double object_GND_buffer = newAvg_object_GND;
+						double object_remainder_GND = modf(object_GND_buffer,&object_GND_buffer);
+						int16_t object_int_GND;
+						uint8_t object_remainder_Uint_GND;
+						object_int_GND = (int16_t)newAvg_object_GND;
+						object_remainder_Uint_GND = abs((uint8_t) (object_remainder_GND*100));
+
+						object_hex_GND[2] = object_remainder_Uint_GND;
+						object_hex_GND[1] = object_int_GND;
+						object_hex_GND[0] = object_int_GND >> 8;
+
 
          /////////////////VDD SENSOR OBJECT CONVERSION FOR TRANSMISSION
-        				///!!!printLog("initial object is %f or %x\n\r",object,object);
 						double object_VDD_buffer = newAvg_object_VDD;
         				double object_remainder_VDD = modf(object_VDD_buffer,&object_VDD_buffer);
         				int16_t object_int_VDD;
@@ -548,10 +548,7 @@ void appMain(gecko_configuration_t *pconfig)
         				object_hex_VDD[2] = object_remainder_Uint_VDD;
         				object_hex_VDD[1] = object_int_VDD;
         				object_hex_VDD[0] = object_int_VDD >> 8;
-        				///!!!printLog("object is %f or %x\n\r",object,object);
-        				///!!!printLog("object remainder is %f or %x\n\r",object_remainder,object_remainder);
-        				///!!!printLog("object_int is %d or %x\n\r",object_int,object_int);
-        				///!!!printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
+
 
 		/////////////////GND SENSOR AMBIENT CONVERSION FOR TRANSMISSION
         				double ambient_GND_buffer = ambient_GND;
@@ -565,17 +562,7 @@ void appMain(gecko_configuration_t *pconfig)
 						ambient_hex_GND[1] = ambient_int_GND;
 						ambient_hex_GND[0] = ambient_int_GND >> 8;
 
-		 /////////////////GND SENSOR OBJECT CONVERSION FOR TRANSMISSION
-						double object_GND_buffer = object_GND;
-						double object_remainder_GND = modf(object_GND_buffer,&object_GND_buffer);
-						int16_t object_int_GND;
-						uint8_t object_remainder_Uint_GND;
-						object_int_GND = (int16_t)object_GND;
-						object_remainder_Uint_GND = abs((uint8_t) (object_remainder_GND*100));
 
-						object_hex_GND[2] = object_remainder_Uint_GND;
-						object_hex_GND[1] = object_int_GND;
-						object_hex_GND[0] = object_int_GND >> 8;
 
 		//////////////// GETTING THE TIMESTAMP
 						// Reset the timeStamp. Zero will be sent if isRecording Flag is False!
@@ -604,7 +591,7 @@ void appMain(gecko_configuration_t *pconfig)
 
 							//front_TR_PWM_Local = GetPID(set_point, object_t, p_scalar, i_scalar, d_scalar, &integral, &previous_error);
 							front_TR_PWM_Local = GetPID(32, newAvg_object_VDD, 20, 0, 0, &integral_VDD, &previous_error_VDD);
-							back_TR_PWM_Local = GetPID(32, object_GND, 20, 0, 0, &integral_GND, &previous_error_GND);
+							back_TR_PWM_Local = GetPID(32, newAvg_object_GND, 20, 0, 0, &integral_GND, &previous_error_GND);
 
 
 
