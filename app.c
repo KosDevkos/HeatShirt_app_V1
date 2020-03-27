@@ -68,11 +68,26 @@ uint16_t Sensor_VDD = 0x3B << 1;
 /////////////// PWM DEFINE
 // this PWM_FREQ = 65000 creates about 1kHz signal.
 #define PWM_FREQ 65000
+//
+#define MOVING_AVG_BUFFER 20
 
 /// void printTime();
 
 // TimeStamp fuction Prototype
 uint32_t GetTimeStamp();
+
+uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *integral, float *previous_error);
+
+
+
+////////// GLOBAL VARIABLES
+
+double arrNumbers_VDD[MOVING_AVG_BUFFER] = {0};
+double arrNumbers_GND[MOVING_AVG_BUFFER] = {0};
+
+
+
+
 
 /* Print boot message */
 static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt);
@@ -117,44 +132,57 @@ void appMain(gecko_configuration_t *pconfig)
 
 
  ////////////// VARIABLES DEFINITIONS
+        int32_t ret = 0;
 
-                int32_t ret = 0;
+        uint8_t front_TR_PWM_Local;
+        uint8_t back_TR_PWM_Local;
+        front_TR_PWM_Local = 5;
+        back_TR_PWM_Local = 5;
+        uint8_t front_TR_PWM_In;
+        uint8_t back_TR_PWM_In;
 
-                uint8_t front_TR_PWM_Local;
-        		uint8_t back_TR_PWM_Local;
-               	front_TR_PWM_Local = 5;
-        		back_TR_PWM_Local = 5;
-        		uint8_t front_TR_PWM_In;
-        		uint8_t back_TR_PWM_In;
+        double ambient_VDD;
+        double ambient_GND;
+        double object_VDD;
+        double object_GND;
+        uint8_t ambient_hex_VDD[3];
+        uint8_t ambient_hex_GND[3];
+        uint8_t object_hex_VDD[3];
+        uint8_t object_hex_GND[3];
 
-                double ambient_VDD;
-                double ambient_GND;
-                double object_VDD;
-                double object_GND;
-                uint8_t ambient_hex_VDD[3];
-                uint8_t ambient_hex_GND[3];
-                uint8_t object_hex_VDD[3];
-                uint8_t object_hex_GND[3];
-
-                uint32_t deltaTimeStamp;
-                uint32_t currentTimeStamp;
-                uint32_t startOfRecordingTimeStamp = 0;
-                uint8_t timeStampArr[4];
-
-                uint8_t isRecording = 0;
-                uint8_t modeOfOperation = 0;
+        // PID Var
+        float integral_VDD = 0;
+        float previous_error_VDD = 0;
+        float integral_GND = 0;
+        float previous_error_GND = 0;
 
 
-        		I2C_TransferReturn_TypeDef transfer_status;
+         // MOVING AVARAGE FILTER var
+         int pos = 0;
+         double newAvg_object_VDD = 0;
+         double sum = 0;
 
-                int16_t object_new_raw_GND;
-        		int16_t object_old_raw_GND;
-        		int16_t ambient_new_raw_GND;
-        		int16_t ambient_old_raw_GND;
-                int16_t object_new_raw_VDD;
-        		int16_t object_old_raw_VDD;
-        		int16_t ambient_new_raw_VDD;
-        		int16_t ambient_old_raw_VDD;
+         int len = 20;
+
+        uint32_t deltaTimeStamp;
+        uint32_t currentTimeStamp;
+        uint32_t startOfRecordingTimeStamp = 0;
+        uint8_t timeStampArr[4];
+
+        uint8_t isRecording = 0;
+        uint8_t modeOfOperation = 0;
+
+
+        I2C_TransferReturn_TypeDef transfer_status;
+
+        int16_t object_new_raw_GND;
+        int16_t object_old_raw_GND;
+        int16_t ambient_new_raw_GND;
+        int16_t ambient_old_raw_GND;
+        int16_t object_new_raw_VDD;
+        int16_t object_old_raw_VDD;
+        int16_t ambient_new_raw_VDD;
+        int16_t ambient_old_raw_VDD;
 
 
 ///////////// PWM TIMERS SETUP
@@ -427,6 +455,8 @@ void appMain(gecko_configuration_t *pconfig)
         				///!!!printLog("int ambient_VDD is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
 
+
+
        //////////////// GND SENSOR READING (AMBIENT AND OBJECT)
         				ret = mlx90632_read_temp_raw(Sensor_GND, &ambient_new_raw_GND, &ambient_old_raw_GND,
         											 &object_new_raw_GND, &object_old_raw_GND);
@@ -449,16 +479,44 @@ void appMain(gecko_configuration_t *pconfig)
         				///!!!printLog("int ambient GND is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
 
+
+
+	////////////////////// MOVING AVERAGE FILTER
+        				  // Caclulate the size of a buffer for the moving average filter
+
+
+						  // Upated the sum of a buffer for the moving average filter
+						  //Subtract the oldest number from the prev sum, add the new number
+						  printLog("sum is %lf, arrNumbers[pos] is %lf, object_VDD is %lf \n\r", sum, arrNumbers_VDD[pos], object_VDD );
+						  sum = sum - arrNumbers_VDD[pos] + object_VDD;
+						  printLog("New sum is %lf \n\r", sum);
+
+						  //Assign the nextNum to the position in the array
+						  arrNumbers_VDD[pos] = object_VDD;
+						  printLog("New arrNumbers[pos] is %lf; pos is %d\n\r", arrNumbers_VDD[pos], pos);
+
+						  //return the average
+						  newAvg_object_VDD = sum / len;
+
+						  printf("The new average is %lf \n\r", newAvg_object_VDD);
+						  pos++;
+						  if (pos >= len) pos = 0;
+
+
+
+
         /////////////////VDD SENSOR AMBIENT CONVERSION FOR TRANSMISSION
         				//////////// The method of storing double might differ from device to device.
         				//////////// Hence,  double is split into integer and decimal points and stored and converted integers
         				///!!!printLog("initial ambient is %f or %x\n\r",ambient,ambient);
-        				double ambient_remainder_VDD = modf(ambient_VDD,&ambient_VDD);
+
+						double ambient_VDD_buffer = object_VDD; 				// !!!!!!!!!!ambient_VDD;
+        				double ambient_remainder_VDD = modf(ambient_VDD_buffer,&ambient_VDD_buffer);
         				int16_t ambient_int_VDD;
         				uint8_t ambient_remainder_Uint_VDD;
 
 
-        				ambient_int_VDD = (int16_t)ambient_VDD;
+        				ambient_int_VDD = (int16_t) object_VDD; 	  /////////////ambient_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
         				ambient_remainder_Uint_VDD = abs((uint8_t) (ambient_remainder_VDD*100));
@@ -478,10 +536,11 @@ void appMain(gecko_configuration_t *pconfig)
 
          /////////////////VDD SENSOR OBJECT CONVERSION FOR TRANSMISSION
         				///!!!printLog("initial object is %f or %x\n\r",object,object);
-        				double object_remainder_VDD = modf(object_VDD,&object_VDD);
+						double object_VDD_buffer = newAvg_object_VDD;
+        				double object_remainder_VDD = modf(object_VDD_buffer,&object_VDD_buffer);
         				int16_t object_int_VDD;
         				uint8_t object_remainder_Uint_VDD;
-        				object_int_VDD = (int16_t)object_VDD;
+        				object_int_VDD = (int16_t)newAvg_object_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
         				object_remainder_Uint_VDD = abs((uint8_t) (object_remainder_VDD*100));
@@ -495,8 +554,8 @@ void appMain(gecko_configuration_t *pconfig)
         				///!!!printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
 
 		/////////////////GND SENSOR AMBIENT CONVERSION FOR TRANSMISSION
-
-						double ambient_remainder_GND = modf(ambient_GND,&ambient_GND);
+        				double ambient_GND_buffer = ambient_GND;
+						double ambient_remainder_GND = modf(ambient_GND_buffer,&ambient_GND_buffer);
 						int16_t ambient_int_GND;
 						uint8_t ambient_remainder_Uint_GND;
 						ambient_int_GND = (int16_t)ambient_GND;
@@ -507,8 +566,8 @@ void appMain(gecko_configuration_t *pconfig)
 						ambient_hex_GND[0] = ambient_int_GND >> 8;
 
 		 /////////////////GND SENSOR OBJECT CONVERSION FOR TRANSMISSION
-
-						double object_remainder_GND = modf(object_GND,&object_GND);
+						double object_GND_buffer = object_GND;
+						double object_remainder_GND = modf(object_GND_buffer,&object_GND_buffer);
 						int16_t object_int_GND;
 						uint8_t object_remainder_Uint_GND;
 						object_int_GND = (int16_t)object_GND;
@@ -539,18 +598,14 @@ void appMain(gecko_configuration_t *pconfig)
 
           /////////////////  RECALCULATING AND UPDATING THE DUCY CYCLE ON TRANSISTORS
 
-						if (modeOfOperation == 0){ 			// Automatic mode
-							if (object_VDD >= 30 ){
-								front_TR_PWM_Local = 0;
-							}else{
-								front_TR_PWM_Local = 80;
-							}
 
-							if (object_GND >= 30){
-								back_TR_PWM_Local = 0;
-							}else{
-								back_TR_PWM_Local = 80;
-							}
+						if (modeOfOperation == 0){ 			// Automatic mode
+
+
+							//front_TR_PWM_Local = GetPID(set_point, object_t, p_scalar, i_scalar, d_scalar, &integral, &previous_error);
+							front_TR_PWM_Local = GetPID(32, newAvg_object_VDD, 20, 0, 0, &integral_VDD, &previous_error_VDD);
+							back_TR_PWM_Local = GetPID(32, object_GND, 20, 0, 0, &integral_GND, &previous_error_GND);
+
 
 
 						}else if (modeOfOperation == 1){	// Manual mode
@@ -629,13 +684,11 @@ void appMain(gecko_configuration_t *pconfig)
                 	modeOfOperation = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
 
                 	switch(modeOfOperation){
-                	case(0):
-                			// Automatic mode, user duty cycle regulation is disabled
-                			// ADD
+                	case(0):  // Automatic mode, user duty cycle regulation is disabled
+
                 			break;
-                	case(1):
-                			// Manual mode, user duty cycle regulation is enabled
-							// ADD
+                	case(1):  // Manual mode, user duty cycle regulation is enabled
+
                 			break;
                     default:
                     	break;
@@ -674,6 +727,32 @@ void appMain(gecko_configuration_t *pconfig)
     }
   }
 }
+
+uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *integral, float *previous_error){
+
+	printLog("Im here, set_point %f; object_t %f; p_scalar %f; i_scalar %f; d_scalar %f; integral %f; previous_error %f; \n\r",set_point, object_t, p_scalar, i_scalar, d_scalar, *
+			integral, *previous_error);
+	float error = set_point - object_t;
+
+	uint8_t proportional = (uint8_t) error * p_scalar;
+	printLog("proportional %d \n\r", proportional);
+	if (proportional >  100) proportional = 100; // limit wind-up
+	if (proportional < 0) proportional = 0;
+
+	// calculate the integral component (summation of past errors * i scalar)
+	*integral += error * i_scalar;
+	if(integral >  100) integral = 100; // limit wind-up
+	if(integral < 0) integral = 0;
+
+	// calculate the derivative component (change since previous error * d scalar)
+
+	float derivative = (error - *previous_error) * d_scalar;
+	*previous_error = error;
+	printLog("proportional %d \n\r", proportional);
+
+	return proportional /*  + integral + derivative  */ ;
+}
+
 
 
 
