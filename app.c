@@ -730,8 +730,11 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 
 	uint8_t proportional = (uint8_t) error * p_scalar;
 	printLog("proportional %d \n\r", proportional);
-	if (proportional >  100) proportional = 100; // limit wind-up
-	if (proportional < 0) proportional = 0;
+	
+	// Boundary if statements, as duty cycle can not be over 100 and below 0.
+	// IMPORTANT As uint8_t variable, proportional may overflow. If so, either 0 or 100 is assigned to it
+	if (error * p_scalar >  100) proportional = 100; // limit wind-up
+	if (error * p_scalar < 0) proportional = 0;
 
 	// calculate the integral component (summation of past errors * i scalar)
 	*integral += error * i_scalar;
