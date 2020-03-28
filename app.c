@@ -679,7 +679,6 @@ void appMain(gecko_configuration_t *pconfig)
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_front_Desired_Temp_Characteristic){
                 	frontDesiredTemp = 0;
                     // REQUIRED TO Divide BY 2 TO BE ABLE TO READ AS INTEGERS. Note Steper step is 0.5.
-
                 	frontDesiredTemp = (((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0])  /2 );;
                 }
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_back_Desired_Temp_Characteristic){
