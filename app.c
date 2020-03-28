@@ -679,12 +679,12 @@ void appMain(gecko_configuration_t *pconfig)
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_front_Desired_Temp_Characteristic){
                 	frontDesiredTemp = 0;
                     // REQUIRED TO Divide BY 2 TO BE ABLE TO READ AS INTEGERS. Note Steper step is 0.5.
-                	frontDesiredTemp = (((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0])  /2 );;
+                	frontDesiredTemp = (((double)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /2 );
                 }
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_back_Desired_Temp_Characteristic){
                 	backDesiredTemp = 0;
                     // REQUIRED TO Divide BY 2 TO BE ABLE TO READ AS INTEGERS. Note Steper step is 0.5.
-                	backDesiredTemp = (((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0])  /2 );
+                	backDesiredTemp = (((double)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /2 );
                 	printLog("backDesiredTemp is %lf \n\r", backDesiredTemp);
                 }
                 
@@ -726,8 +726,9 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 	printLog("Im here, set_point %f; object_t %f; p_scalar %f; i_scalar %f; d_scalar %f; integral %f; previous_error %f; \n\r",set_point, object_t, p_scalar, i_scalar, d_scalar, *
 			integral, *previous_error);
 	float error = set_point - object_t;
+	printLog("error %f \n\r", error);
 
-	uint8_t proportional = (uint8_t) error * p_scalar;
+	uint8_t proportional = (uint8_t) (error * p_scalar);
 	printLog("proportional %d \n\r", proportional);
 	
 	// Boundary if statements, as duty cycle can not be over 100 and below 0.
@@ -737,14 +738,13 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 
 	// calculate the integral component (summation of past errors * i scalar)
 	*integral += error * i_scalar;
-	if(integral >  100) integral = 100; // limit wind-up
+	if(*integral >  100) integral = 100; // limit wind-up
 	if(integral < 0) integral = 0;
 
 	// calculate the derivative component (change since previous error * d scalar)
 
 	float derivative = (error - *previous_error) * d_scalar;
 	*previous_error = error;
-	printLog("proportional %d \n\r", proportional);
 
 	return proportional /*  + integral + derivative  */ ;
 }
