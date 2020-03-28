@@ -18,16 +18,18 @@ extern const struct bg_gattdb_def bg_gattdb_data;
 #define gattdb_client_support_features          8
 #define gattdb_device_name                     11
 #define gattdb_ota_control                     23
-#define gattdb_TimeStamp                       26
-#define gattdb_modeOfOperation                 29
-#define gattdb_isRecording                     31
-#define gattdb_Back_TR_PWM_OUT                 33
-#define gattdb_Back_TR_PWM_IN                  36
-#define gattdb_Front_TR_PWM_OUT                38
-#define gattdb_Front_TR_PWM_IN                 41
-#define gattdb_Ambient_characteristic_GND         43
-#define gattdb_Ambient_characteristic_VDD         46
-#define gattdb_Object_characteristic_GND         49
-#define gattdb_Object_characteristic_VDD         52
+#define gattdb_front_Desired_Temp_Characteristic         26
+#define gattdb_back_Desired_Temp_Characteristic         28
+#define gattdb_TimeStamp                       30
+#define gattdb_modeOfOperation                 33
+#define gattdb_isRecording                     35
+#define gattdb_Back_TR_PWM_OUT                 37
+#define gattdb_Back_TR_PWM_IN                  40
+#define gattdb_Front_TR_PWM_OUT                42
+#define gattdb_Front_TR_PWM_IN                 45
+#define gattdb_Ambient_characteristic_GND         47
+#define gattdb_Ambient_characteristic_VDD         50
+#define gattdb_Object_characteristic_GND         53
+#define gattdb_Object_characteristic_VDD         56
 
 #endif

@@ -100,6 +100,9 @@ uint8_t ambient_hex_GND[3];
 uint8_t object_hex_VDD[3];
 uint8_t object_hex_GND[3];
 
+double frontDesiredTemp = 32;
+double backDesiredTemp = 32;
+
 // PID Var
 float integral_VDD = 0;
 float previous_error_VDD = 0;
@@ -590,8 +593,8 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 							//front_TR_PWM_Local = GetPID(set_point, object_t, p_scalar, i_scalar, d_scalar, &integral, &previous_error);
-							front_TR_PWM_Local = GetPID(32, newAvg_object_VDD, 20, 0, 0, &integral_VDD, &previous_error_VDD);
-							back_TR_PWM_Local = GetPID(32, newAvg_object_GND, 20, 0, 0, &integral_GND, &previous_error_GND);
+							front_TR_PWM_Local = GetPID(frontDesiredTemp, newAvg_object_VDD, 20, 0, 0, &integral_VDD, &previous_error_VDD);
+							back_TR_PWM_Local = GetPID(backDesiredTemp, newAvg_object_GND, 20, 0, 0, &integral_GND, &previous_error_GND);
 
 
 
@@ -669,19 +672,23 @@ void appMain(gecko_configuration_t *pconfig)
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_modeOfOperation){
                 	modeOfOperation = 0;
                 	modeOfOperation = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
-
-                	switch(modeOfOperation){
-                	case(0):  // Automatic mode, user duty cycle regulation is disabled
-
-                			break;
-                	case(1):  // Manual mode, user duty cycle regulation is enabled
-
-                			break;
-                    default:
-                    	break;
-                	}
-
                 }
+                
+                
+                
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_front_Desired_Temp_Characteristic){
+                	frontDesiredTemp = 0;
+                    // REQUIRED TO Divide BY 2 TO BE ABLE TO READ AS INTEGERS. Note Steper step is 0.5.
+
+                	frontDesiredTemp = (((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0])  /2 );;
+                }
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_back_Desired_Temp_Characteristic){
+                	backDesiredTemp = 0;
+                    // REQUIRED TO Divide BY 2 TO BE ABLE TO READ AS INTEGERS. Note Steper step is 0.5.
+                	backDesiredTemp = (((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0])  /2 );
+                	printLog("backDesiredTemp is %lf \n\r", backDesiredTemp);
+                }
+                
                 break;
 
 
