@@ -760,45 +760,45 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 	printLog("Im here, set_point %f; object_t %f; p_scalar %f; i_scalar %f; d_scalar %f; integral %f; previous_error %f; \n\r",set_point, object_t, p_scalar, i_scalar, d_scalar, *
 			integral, *previous_error);
 	float error = set_point - object_t;
-	printLog("error %f \n\r", error);
+	//printLog("error %f \n\r", error);
 
-	uint8_t proportional = (uint8_t) (error * p_scalar);
-	printLog("proportional %d \n\r", proportional);
+	float proportional = (error * p_scalar);
+	//printLog("proportional in_funct_1 %f \n\r", proportional);
 	
 	// Boundary if statements, as duty cycle can not be over 100 and below 0.
 	// IMPORTANT As uint8_t variable, proportional may overflow. If so, either 0 or 100 is assigned to it
 	if (error * p_scalar >  100) proportional = 100; // limit wind-up
 	if (error * p_scalar < 0) proportional = 0;
+	//printLog("proportional in_funct_2 %f \n\r", proportional);
 
 	// calculate the integral component (summation of past errors * i scalar)
-	printLog("Integral in_funct_1 is %lf, ", *integral);
+	//printLog("Integral in_funct_1 is %lf, ", *integral);
 	*integral += error * i_scalar;
-	printLog("Integral in_funct_2 is %lf, ", *integral);
+	//printLog("Integral in_funct_2 is %lf, ", *integral);
 	if(*integral >  100) *integral = 100; // limit wind-up
 	if(*integral < 0) *integral = 0;
-	printLog("Integral in_funct_3 is %lf \n\r", *integral);
+	//printLog("Integral in_funct_3 is %lf \n\r", *integral);
 
 
 	// calculate the derivative component (change since previous error * d scalar)
-	printLog("previous_error in_funct_1 is %lf, ", *previous_error);
+	//printLog("previous_error in_funct_1 is %lf, ", *previous_error);
 
 	float derivative = (error - *previous_error) * d_scalar;
-	printLog("derivative in_funct_1 is %lf, ", derivative);
+	//printLog("derivative in_funct_1 is %lf, ", derivative);
 	*previous_error = error;
-	printLog("previous_error in_funct_2 is %lf \n\r", *previous_error);
+	//printLog("previous_error in_funct_2 is %lf \n\r", *previous_error);
 
 
 
 	double resultingPID = proportional + *integral + derivative  ;
-	printLog("resultingPID in_funct_1 is %lf, ", resultingPID);
+	///printLog("resultingPID in_funct_1 is %lf, ", resultingPID);
 	// Limit
-	// Note, resultingPID is uit8 with max value of 256, so if variables are at their maximum value of 100, resultingPID will overflow.
-	// Hence, the sum is checked in the if statement instead of a value, whihc may overflow.
-	if(proportional + *integral + derivative >  100) resultingPID = 100;
-	if(proportional + *integral + derivative < 0) resultingPID = 0;
-	printLog("resultingPID in_funct_2 is %lf \n\r", resultingPID);
+	if(resultingPID >  100) resultingPID = 100;
+	if(resultingPID < 0) resultingPID = 0;
+	//printLog("resultingPID in_funct_2 is %lf \n\r", resultingPID);
 
-
+	printLog(" error is %f; proportional is %f; *integral is %f; derivative is %f; resultingPID is %f; \n\r",error, proportional, *integral,
+			derivative, resultingPID);
 	return (int8_t)resultingPID ;
 }
 
