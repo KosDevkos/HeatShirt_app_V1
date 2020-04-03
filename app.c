@@ -68,8 +68,82 @@ uint16_t Sensor_VDD = 0x3B << 1;
 /////////////// PWM DEFINE
 // this PWM_FREQ = 65000 creates about 1kHz signal.
 #define PWM_FREQ 65000
+//
+#define MOVING_AVG_BUFFER 5
 
 /// void printTime();
+
+// TimeStamp fuction Prototype
+uint32_t GetTimeStamp();
+
+uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *integral, float *previous_error);
+
+
+
+////////// GLOBAL VARIABLES
+
+
+
+int32_t ret = 0;
+
+uint8_t front_TR_PWM_Local= 5;
+uint8_t back_TR_PWM_Local= 5;
+uint8_t front_TR_PWM_In;
+uint8_t back_TR_PWM_In;
+
+double ambient_VDD;
+double ambient_GND;
+double object_VDD;
+double object_GND;
+uint8_t ambient_hex_VDD[3];
+uint8_t ambient_hex_GND[3];
+uint8_t object_hex_VDD[3];
+uint8_t object_hex_GND[3];
+
+double frontDesiredTemp = 32;
+double backDesiredTemp = 32;
+
+// PID Var
+float integral_VDD = 0;
+float previous_error_VDD = 0;
+float integral_GND = 0;
+float previous_error_GND = 0;
+float PforPID = 0;
+float IforPID = 0;
+float DforPID = 0;
+
+
+
+ //////////// MOVING AVARAGE FILTER var
+ int pos = 0;
+ double newAvg_object_VDD = 32;
+ double newAvg_object_GND = 32;
+ double sum_VDD = 0;
+ double sum_GND = 0;
+ double arrNumbers_VDD[MOVING_AVG_BUFFER] = {0};
+ double arrNumbers_GND[MOVING_AVG_BUFFER] = {0};
+
+
+uint32_t deltaTimeStamp;
+uint32_t currentTimeStamp;
+uint32_t startOfRecordingTimeStamp = 0;
+uint8_t timeStampArr[4];
+
+uint8_t isRecording = 0;
+uint8_t modeOfOperation = 0;
+
+
+I2C_TransferReturn_TypeDef transfer_status;
+
+int16_t object_new_raw_GND;
+int16_t object_old_raw_GND;
+int16_t ambient_new_raw_GND;
+int16_t ambient_old_raw_GND;
+int16_t object_new_raw_VDD;
+int16_t object_old_raw_VDD;
+int16_t ambient_new_raw_VDD;
+int16_t ambient_old_raw_VDD;
+
 
 
 
@@ -114,6 +188,14 @@ void appMain(gecko_configuration_t *pconfig)
 
         bootMessage(&(evt->data.evt_system_boot));
 
+
+ ////////////// VARIABLES DEFINITIONS
+
+
+
+///////////// PWM TIMERS SETUP
+
+
         /* Enable clock for TIMER0 module */
         CMU_ClockEnable(cmuClock_TIMER0, true);
 
@@ -125,10 +207,10 @@ void appMain(gecko_configuration_t *pconfig)
 	    /* Route pins to timer */
 	    // $[TIMER0 I/O setup]
 	    /* Set up CC0 */
-	    ///!!!TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
-	    ///!!!        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
+		///!!!TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
+		///!!!        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
 	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
-	            | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
+        | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
 	    TIMER0->ROUTEPEN = TIMER0->ROUTEPEN | TIMER_ROUTEPEN_CC0PEN;
 	    /* Set up CC1 */
 	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC1LOC_MASK))
@@ -196,7 +278,7 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-
+///////////// I2C SETUP
 		  CMU_ClockEnable(cmuClock_I2C0, true); /// ???????????????
 
 
@@ -214,18 +296,12 @@ void appMain(gecko_configuration_t *pconfig)
 		   I2CSPM_Init(&myi2cinit);
 
 
-		I2C_TransferReturn_TypeDef transfer_status;
 
-        int16_t object_new_raw_GND;
-		int16_t object_old_raw_GND;
-		int16_t ambient_new_raw_GND;
-		int16_t ambient_old_raw_GND;
-        int16_t object_new_raw_VDD;
-		int16_t object_old_raw_VDD;
-		int16_t ambient_new_raw_VDD;
-		int16_t ambient_old_raw_VDD;
 
 		usleep(10,10);
+
+
+///////// I2C SESORS CONSTANTS EXTRACTION
 
 		int32_t P_T;
 		uint16_t P_T_MS;
@@ -331,19 +407,6 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 
-        int32_t ret = 0;
-        uint8_t front_TR_PWM;
-		uint8_t back_TR_PWM;
-       	front_TR_PWM = 5;
-		back_TR_PWM = 5;
-        double ambient_VDD;
-        double ambient_GND;
-        double object_VDD;
-        double object_GND;
-        uint8_t ambient_hex_VDD[3];
-        uint8_t ambient_hex_GND[3];
-        uint8_t object_hex_VDD[3];
-        uint8_t object_hex_GND[3];
 
 
 
@@ -364,7 +427,7 @@ void appMain(gecko_configuration_t *pconfig)
       case gecko_evt_le_connection_opened_id:
 
         printLog("connection opened\r\n");
-        gecko_cmd_hardware_set_soft_timer(40000,0,0);
+        gecko_cmd_hardware_set_soft_timer(50000,0,0);
 
         /* Read sensor EEPROM registers needed for calcualtions */
         /* Now we read current ambient and object temperature */
@@ -376,10 +439,8 @@ void appMain(gecko_configuration_t *pconfig)
 
         if (evt->data.evt_hardware_soft_timer.handle == 0) {
 
-	       	front_TR_PWM = front_TR_PWM;
-			back_TR_PWM = back_TR_PWM;
-	       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM);
-	       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM);
+	       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM_Local);
+	       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM_Local);
        //////////////// VDD SENSOR READING (AMBIENT AND OBJECT)
         				ret = mlx90632_read_temp_raw(Sensor_VDD, &ambient_new_raw_VDD, &ambient_old_raw_VDD,
         											 &object_new_raw_VDD, &object_old_raw_VDD);
@@ -400,6 +461,8 @@ void appMain(gecko_configuration_t *pconfig)
         				object_VDD = mlx90632_calc_temp_object(pre_object_VDD, pre_ambient_VDD, Ea, Eb, Ga, Fa, Fb, Ha, Hb);
         				printLog("ambient_VDD is : %f - %x    object is : %f - %x \n\r", ambient_VDD,ambient_VDD,object_VDD,object_VDD);
         				///!!!printLog("int ambient_VDD is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
+
+
 
 
        //////////////// GND SENSOR READING (AMBIENT AND OBJECT)
@@ -424,25 +487,41 @@ void appMain(gecko_configuration_t *pconfig)
         				///!!!printLog("int ambient GND is : %d - %x    int object is : %d - %x \n\r", (int) ambient,(int) ambient,(int) object,(int) object);
 
 
+
+
+	////////////////////// MOVING AVERAGE FILTER
+
+
+						  // Upated the sum of a buffer for the moving average filter
+						  //Subtract the oldest number from the prev sum, add the new number
+						  sum_VDD = sum_VDD - arrNumbers_VDD[pos] + object_VDD;
+						  sum_GND = sum_GND - arrNumbers_GND[pos] + object_GND;
+						  //Assign the nextNum to the position in the array
+						  arrNumbers_VDD[pos] = object_VDD;
+						  arrNumbers_GND[pos] = object_GND;
+						  //return the average
+						  newAvg_object_VDD = sum_VDD / MOVING_AVG_BUFFER;
+						  newAvg_object_GND = sum_GND / MOVING_AVG_BUFFER;
+						  pos++;
+						  if (pos >= MOVING_AVG_BUFFER) pos = 0;
+
+
+
+
         /////////////////VDD SENSOR AMBIENT CONVERSION FOR TRANSMISSION
         				//////////// The method of storing double might differ from device to device.
         				//////////// Hence,  double is split into integer and decimal points and stored and converted integers
-        				///!!!printLog("initial ambient is %f or %x\n\r",ambient,ambient);
-        				double ambient_remainder_VDD = modf(ambient_VDD,&ambient_VDD);
+
+						double ambient_VDD_buffer = ambient_VDD;
+        				double ambient_remainder_VDD = modf(ambient_VDD_buffer,&ambient_VDD_buffer);
         				int16_t ambient_int_VDD;
         				uint8_t ambient_remainder_Uint_VDD;
 
 
-        				ambient_int_VDD = (int16_t)ambient_VDD;
+        				ambient_int_VDD = (int16_t) ambient_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
         				ambient_remainder_Uint_VDD = abs((uint8_t) (ambient_remainder_VDD*100));
-
-        				///!!!printLog("ambient is %f or %x\n\r",ambient,ambient);
-        				///!!!printLog("ambient remainder is %f or %x\n\r",ambient_remainder,ambient_remainder);
-        				///!!!printLog("ambient_int is %d or %x\n\r",ambient_int,ambient_int);
-        				///!!!printLog("ambient_int remainder is %d or %x\n\r",ambient_remainder_Uint,ambient_remainder_Uint);
-
 
 
         				ambient_hex_VDD[2] = ambient_remainder_Uint_VDD;
@@ -450,13 +529,25 @@ void appMain(gecko_configuration_t *pconfig)
         				ambient_hex_VDD[0] = ambient_int_VDD >> 8;
 
 
+		 /////////////////GND SENSOR OBJECT CONVERSION FOR TRANSMISSION
+						double object_GND_buffer = newAvg_object_GND;
+						double object_remainder_GND = modf(object_GND_buffer,&object_GND_buffer);
+						int16_t object_int_GND;
+						uint8_t object_remainder_Uint_GND;
+						object_int_GND = (int16_t)newAvg_object_GND;
+						object_remainder_Uint_GND = abs((uint8_t) (object_remainder_GND*100));
+
+						object_hex_GND[2] = object_remainder_Uint_GND;
+						object_hex_GND[1] = object_int_GND;
+						object_hex_GND[0] = object_int_GND >> 8;
+
 
          /////////////////VDD SENSOR OBJECT CONVERSION FOR TRANSMISSION
-        				///!!!printLog("initial object is %f or %x\n\r",object,object);
-        				double object_remainder_VDD = modf(object_VDD,&object_VDD);
+						double object_VDD_buffer = newAvg_object_VDD;
+        				double object_remainder_VDD = modf(object_VDD_buffer,&object_VDD_buffer);
         				int16_t object_int_VDD;
         				uint8_t object_remainder_Uint_VDD;
-        				object_int_VDD = (int16_t)object_VDD;
+        				object_int_VDD = (int16_t)newAvg_object_VDD;
         				 //// multiply remainder by 100 to get 2 significant figures, convert to int,
         				///// then get the absolute value
         				object_remainder_Uint_VDD = abs((uint8_t) (object_remainder_VDD*100));
@@ -464,14 +555,11 @@ void appMain(gecko_configuration_t *pconfig)
         				object_hex_VDD[2] = object_remainder_Uint_VDD;
         				object_hex_VDD[1] = object_int_VDD;
         				object_hex_VDD[0] = object_int_VDD >> 8;
-        				///!!!printLog("object is %f or %x\n\r",object,object);
-        				///!!!printLog("object remainder is %f or %x\n\r",object_remainder,object_remainder);
-        				///!!!printLog("object_int is %d or %x\n\r",object_int,object_int);
-        				///!!!printLog("object_int remainder is %d or %x\n\r",object_remainder_Uint,object_remainder_Uint);
+
 
 		/////////////////GND SENSOR AMBIENT CONVERSION FOR TRANSMISSION
-
-						double ambient_remainder_GND = modf(ambient_GND,&ambient_GND);
+        				double ambient_GND_buffer = ambient_GND;
+						double ambient_remainder_GND = modf(ambient_GND_buffer,&ambient_GND_buffer);
 						int16_t ambient_int_GND;
 						uint8_t ambient_remainder_Uint_GND;
 						ambient_int_GND = (int16_t)ambient_GND;
@@ -481,35 +569,72 @@ void appMain(gecko_configuration_t *pconfig)
 						ambient_hex_GND[1] = ambient_int_GND;
 						ambient_hex_GND[0] = ambient_int_GND >> 8;
 
-		 /////////////////GND SENSOR OBJECT CONVERSION FOR TRANSMISSION
-
-						double object_remainder_GND = modf(object_GND,&object_GND);
-						int16_t object_int_GND;
-						uint8_t object_remainder_Uint_GND;
-						object_int_GND = (int16_t)object_GND;
-						object_remainder_Uint_GND = abs((uint8_t) (object_remainder_GND*100));
-
-						object_hex_GND[2] = object_remainder_Uint_GND;
-						object_hex_GND[1] = object_int_GND;
-						object_hex_GND[0] = object_int_GND >> 8;
 
 
+		//////////////// GETTING THE TIMESTAMP
+						// Reset the timeStamp. Zero will be sent if isRecording Flag is False!
+						deltaTimeStamp = 0;
+						// Only assign values to time stamp if isRecording flag is true
+							if (isRecording == 1){
+							// Get the current time for the time stamp
+							currentTimeStamp = GetTimeStamp();
+							printLog("currentTimeStamp is : %ld \n\r", currentTimeStamp);
+							// Substract the start of the recoirding time from current time stamp
+							deltaTimeStamp = currentTimeStamp - startOfRecordingTimeStamp;
+							printLog("startOfRecordingTimeStamp is : %ld \n\r", startOfRecordingTimeStamp);
+							printLog("deltaTimeStamp is : %ld \n\r", deltaTimeStamp);
+						}
+						// Split the delta timestamp into 8bit pieces and put them into the array for the future transmission via bluetooth
+						for(int i = 0; i < 4; i++) {
+							timeStampArr[3-i] = (deltaTimeStamp >> (8*i)) & 0xFF;
+						};
 
-						front_TR_PWM = front_TR_PWM + 1;
-						const uint8_t front_TR_PWM_out = front_TR_PWM;
-						back_TR_PWM = back_TR_PWM + 1;
-						const uint8_t back_TR_PWM_out = back_TR_PWM;
+
+          /////////////////  RECALCULATING AND UPDATING THE DUCY CYCLE ON TRANSISTORS
+
+
+						if (modeOfOperation == 0){ 			// Automatic mode
+
+
+							//front_TR_PWM_Local = GetPID(set_point, object_t, p_scalar, i_scalar, d_scalar, &integral, &previous_error);
+							front_TR_PWM_Local = GetPID(frontDesiredTemp, newAvg_object_VDD, PforPID, IforPID, DforPID, &integral_VDD, &previous_error_VDD);
+							printLog("Integral_VDD is %lf \n\r", integral_VDD);
+							back_TR_PWM_Local = GetPID(backDesiredTemp, newAvg_object_GND, PforPID, IforPID, DforPID, &integral_GND, &previous_error_GND);
+							printLog("Integral_GND is %lf \n\r", integral_GND);
+
+							printLog("PforPID is %lf, IforPID is %lf, DforPID is %lf \n\r", PforPID,IforPID,DforPID);
+
+
+
+
+
+
+						}else if (modeOfOperation == 1){	// Manual mode
+							front_TR_PWM_Local = front_TR_PWM_In;
+							back_TR_PWM_Local = back_TR_PWM_In;
+						}else{
+							printLog("Error: wrong mode of operation - %d", modeOfOperation);
+						}
+
+
+						// Set calculated Duty Cycle to transistors
+						TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM_Local*5.91);
+						TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM_Local*5.91);
+
+						// Required, so the gecko_cmd_gatt_server_send_characteristic_notification won't rewrite front_TR_PWM variable
+						const uint8_t front_TR_PWM_Out = front_TR_PWM_Local;
+						const uint8_t back_TR_PWM_Out = back_TR_PWM_Local;
+
+
+		 ///////////////// 	SENDING DATA AS NOTIFICATIONS
 						 //// doesnt work without soft timer, needs to have a break to send the data
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_TimeStamp, 4, (const uint8*)&timeStampArr);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_Out);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_Out);
+          		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_out);
-        		       	printLog("front_TR_PWM is : %d \n\r", front_TR_PWM_out);
-        		       	TIMER_CompareBufSet(TIMER0, 0, front_TR_PWM*5.91);
-        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_out);
-        		       	printLog("back_TR_PWM is : %d \n\r", back_TR_PWM);
-        		       	TIMER_CompareBufSet(TIMER0, 1, back_TR_PWM*5.91);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
 
 
 
@@ -531,19 +656,72 @@ void appMain(gecko_configuration_t *pconfig)
         }
         break;
 
-
+      // If the phone app did update any of characteristics
       case gecko_evt_gatt_server_attribute_value_id:
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Front_TR_PWM_IN){
-                	front_TR_PWM = 0;
+                	front_TR_PWM_In = 0;
     		       	printLog("IM IN gecko_evt_gatt_server_attribute_value_id \n\r");
-                	front_TR_PWM = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+                	front_TR_PWM_In = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
 
                 }
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_Back_TR_PWM_IN){
-                	back_TR_PWM = 0;
-                	back_TR_PWM = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+                	back_TR_PWM_In = 0;
+                	back_TR_PWM_In = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
 
                 }
+                // If the app initiated Recording
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_isRecording){
+                	isRecording = 0;
+                	isRecording = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+                	// If Recording is True, update the startOfRecordingTimeStamp
+                	if (isRecording == 1){
+                		startOfRecordingTimeStamp = GetTimeStamp();
+                		}
+                	}
+
+                // If Mode or Record value has changed
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_modeOfOperation){
+                	modeOfOperation = 0;
+                	modeOfOperation = ((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]);
+                }
+                
+                
+                
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_front_Desired_Temp_Characteristic){
+                	frontDesiredTemp = 0;
+                    // REQUIRED TO Divide BY 2 TO BE ABLE TO READ AS INTEGERS. Note Steper step is 0.5.
+                	frontDesiredTemp = (((double)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /2 );
+                }
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_back_Desired_Temp_Characteristic){
+                	backDesiredTemp = 0;
+                    // REQUIRED TO Divide BY 2 TO BE ABLE TO READ AS INTEGERS. Note Steper step is 0.5.
+                	backDesiredTemp = (((double)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /2 );
+                	printLog("backDesiredTemp is %lf \n\r", backDesiredTemp);
+                }
+                
+
+
+
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_PforPID_Characteristic){
+                	PforPID = 0;
+                    // NOTE, Scaling down the received range (0-100) to (0-100) by dividing by 1
+                	PforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /1 );
+                	printLog("PforPID is %f \n\r", PforPID);
+                }
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_IforPID_Characteristic){
+                	IforPID = 0;
+                    // NOTE, Scaling down the received range (0-100) to (0-20) by dividing by 5
+                	IforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /5 );
+                	printLog("IforPID is %f \n\r", IforPID);
+                }
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_DforPID_Characteristic){
+                	DforPID = 0;
+                    // NOTE, Scaling down the received range (0-100) to (0-5) by dividing by 20
+                	DforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /20 );
+                	printLog("DforPID is %f \n\r", DforPID);
+                }
+
+
                 break;
 
 
@@ -577,22 +755,119 @@ void appMain(gecko_configuration_t *pconfig)
   }
 }
 
-/* Print stack version and local Bluetooth address as boot message */
-static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt)
-{
-#if DEBUG_LEVEL
-  bd_addr local_addr;
-  int i;
+uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *integral, float *previous_error){
 
-  printLog("stack version: %u.%u.%u\r\n", bootevt->major, bootevt->minor, bootevt->patch);
-  local_addr = gecko_cmd_system_get_bt_address()->address;
+	printLog("Im here, set_point %f; object_t %f; p_scalar %f; i_scalar %f; d_scalar %f; integral %f; previous_error %f; \n\r",set_point, object_t, p_scalar, i_scalar, d_scalar, *
+			integral, *previous_error);
+	float error = set_point - object_t;
+	printLog("error %f \n\r", error);
 
-  printLog("local BT device address: ");
-  for (i = 0; i < 5; i++) {
-    printLog("%2.2x:", local_addr.addr[5 - i]);
-  }
-  printLog("%2.2x\r\n", local_addr.addr[0]);
-#endif
+	uint8_t proportional = (uint8_t) (error * p_scalar);
+	printLog("proportional %d \n\r", proportional);
+	
+	// Boundary if statements, as duty cycle can not be over 100 and below 0.
+	// IMPORTANT As uint8_t variable, proportional may overflow. If so, either 0 or 100 is assigned to it
+	if (error * p_scalar >  100) proportional = 100; // limit wind-up
+	if (error * p_scalar < 0) proportional = 0;
+
+	// calculate the integral component (summation of past errors * i scalar)
+	printLog("Integral in_funct_1 is %lf, ", *integral);
+	*integral += error * i_scalar;
+	printLog("Integral in_funct_2 is %lf, ", *integral);
+	if(*integral >  100) *integral = 100; // limit wind-up
+	if(*integral < 0) *integral = 0;
+	printLog("Integral in_funct_3 is %lf \n\r", *integral);
+
+
+	// calculate the derivative component (change since previous error * d scalar)
+	printLog("previous_error in_funct_1 is %lf, ", *previous_error);
+
+	float derivative = (error - *previous_error) * d_scalar;
+	printLog("derivative in_funct_1 is %lf, ", derivative);
+	*previous_error = error;
+	printLog("previous_error in_funct_2 is %lf \n\r", *previous_error);
+
+
+
+	double resultingPID = proportional + *integral + derivative  ;
+	printLog("resultingPID in_funct_1 is %lf, ", resultingPID);
+	// Limit
+	// Note, resultingPID is uit8 with max value of 256, so if variables are at their maximum value of 100, resultingPID will overflow.
+	// Hence, the sum is checked in the if statement instead of a value, whihc may overflow.
+	if(proportional + *integral + derivative >  100) resultingPID = 100;
+	if(proportional + *integral + derivative < 0) resultingPID = 0;
+	printLog("resultingPID in_funct_2 is %lf \n\r", resultingPID);
+
+
+	return (int8_t)resultingPID ;
 }
+
+
+
+
+
+  uint32_t GetTimeStamp(){
+    	/// Declare variable to store calculated days,hours,mins,secs and millisecs.
+    	uint8_t days,hours,mins,sec,ms;
+    	/// Also declare variables to store the total number of seconds and milliseconds
+    	/// elapsed from the chip's power-up.
+    	/// End goal is to keep the total elapsed time in one variable, so that it is easier
+    	/// to send it via Bluetooth Low energy
+    	uint32_t total_sec;
+    	uint32_t total_MS;
+
+    	/// Get time function and store in a special time variable
+    	struct gecko_msg_hardware_get_time_rsp_t* time = gecko_cmd_hardware_get_time();
+
+    	/// Here we will calculate separately number of days,hours,mins,secs elapsed
+    	/// So we can print it in an understandable form
+    	days = time->seconds/60/60/24;
+    	hours = time->seconds/60/60 % 24;
+    	mins = time->seconds/60 % 60;
+    	sec = time->seconds % 60;
+    	/// In order to obtain millisecond passed we have to get it from the number of clock ticks elapsed.
+    	/// *100 defines how many significant figures to keep - 2 in our case,
+    	/// while division by 32768 is required to convert clock ticks into milliseconds.
+    	ms = time->ticks * 100 / 32768;
+
+    	/// Print passed days,hours,mins,secs and millisecs in usual form.
+    	printLog("%03d-%02d:%02d:%02d.%02d \n\r",days,hours,mins,sec,ms);
+
+
+    	/// We will also fill the variable that stores total time in milliseconds.
+    	/// total_MS later will be used to send the timestamp over BLE.
+    	total_sec = time->seconds ;
+    	total_MS = (total_sec * 100) + ms;
+    	/// Print the total time in milliseconds in decimal and hex for later comparison and
+    	/// debug with the received variable on a PC
+    	printLog("total_MS: decimal - %ld,   hex - %x\n\r",total_MS,total_MS);
+
+    	/// Function returns the total time in milliseconds
+    	return total_MS;
+  }
+
+
+  /* Print stack version and local Bluetooth address as boot message */
+  static void bootMessage(struct gecko_msg_system_boot_evt_t *bootevt)
+  {
+  #if DEBUG_LEVEL
+    bd_addr local_addr;
+    int i;
+
+    printLog("stack version: %u.%u.%u\r\n", bootevt->major, bootevt->minor, bootevt->patch);
+    local_addr = gecko_cmd_system_get_bt_address()->address;
+
+    printLog("local BT device address: ");
+    for (i = 0; i < 5; i++) {
+      printLog("%2.2x:", local_addr.addr[5 - i]);
+    }
+    printLog("%2.2x\r\n", local_addr.addr[0]);
+  #endif
+  }
+
+
+
+
+
 
 

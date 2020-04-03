@@ -1,4 +1,4 @@
-// Copyright 2019 Silicon Laboratories, Inc.
+// Copyright 2020 Silicon Laboratories, Inc.
 //
 //
 
@@ -7,7 +7,6 @@ Standard output
 ALL OK
 
 Error/Warning output
-WARNING: 4cd89f16d93e4a3eb46700e514a40d2e length attribute is 3 but actual value length is 1. 3 will be used.
-WARNING: 7352ee73925d414294a3cfe4ace393ae length attribute is 3 but actual value length is 1. 3 will be used.
+WARNING: 09dcd5169e9946bb82b6460838ae7c83 length attribute is 4 but actual value length is 1. 4 will be used.
 
 
