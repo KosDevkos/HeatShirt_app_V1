@@ -91,6 +91,11 @@ appPlugin: stack_bridge=false
       <value length="1" type="hex" variable_length="false">0x00</value>
       <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
+    <characteristic id="sendPID_Characteristic" name="Send PID Characteristic" sourceId="custom.type" uuid="3074c7a8-283f-4389-a160-0e7587837651">
+      <informativeText>Custom characteristic</informativeText>
+      <value length="6" type="hex" variable_length="false">0x000000000000</value>
+      <properties notify="true" notify_requirement="optional"/>
+    </characteristic>
     <characteristic id="back_Desired_Temp_Characteristic" name="Back Desired Temp Characteristic" sourceId="custom.type" uuid="30507bca-5d14-4423-a1ca-405a9b5e6fa0">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>

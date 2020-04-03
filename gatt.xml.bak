@@ -74,21 +74,21 @@
     <characteristic id="PforPID_Characteristic" name="PforPID Characteristic" sourceId="custom.type" uuid="e3195e99-5303-4156-b9ab-1d5a0a5b4ea2">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>
-      <properties notify="true" notify_requirement="optional"/>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
     
     <!--IforPID Characteristic-->
     <characteristic id="IforPID_Characteristic" name="IforPID Characteristic" sourceId="custom.type" uuid="ed06abc1-b683-4014-a29b-a4b7eee22642">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>
-      <properties notify="true" notify_requirement="optional"/>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
     
     <!--DforPID Characteristic-->
     <characteristic id="DforPID_Characteristic" name="DforPID Characteristic" sourceId="custom.type" uuid="b07e67cd-13a3-4006-bd9a-a0de36565f87">
       <informativeText>Custom characteristic</informativeText>
       <value length="1" type="hex" variable_length="false">0x00</value>
-      <properties notify="true" notify_requirement="optional"/>
+      <properties write_no_response="true" write_no_response_requirement="optional"/>
     </characteristic>
     
     <!--Back Desired Temp Characteristic-->

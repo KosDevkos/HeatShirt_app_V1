@@ -76,7 +76,7 @@ uint16_t Sensor_VDD = 0x3B << 1;
 // TimeStamp fuction Prototype
 uint32_t GetTimeStamp();
 
-uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *integral, float *previous_error);
+uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *proportional,float *integral,float *derivative, float *previous_error);
 
 
 
@@ -104,13 +104,19 @@ double frontDesiredTemp = 32;
 double backDesiredTemp = 32;
 
 // PID Var
+float proportional_VDD = 0;
 float integral_VDD = 0;
+float derivative_VDD = 0;
 float previous_error_VDD = 0;
+float proportional_GND = 0;
 float integral_GND = 0;
+float derivative_GND = 0;
 float previous_error_GND = 0;
 float PforPID = 0;
 float IforPID = 0;
 float DforPID = 0;
+uint8_t sendPID_arr[6];
+
 
 
 
@@ -596,16 +602,29 @@ void appMain(gecko_configuration_t *pconfig)
 						if (modeOfOperation == 0){ 			// Automatic mode
 
 
+
+							proportional_VDD = 0;   derivative_VDD = 0;  	proportional_GND = 0; 		derivative_GND = 0;
+
+
 							//front_TR_PWM_Local = GetPID(set_point, object_t, p_scalar, i_scalar, d_scalar, &integral, &previous_error);
-							front_TR_PWM_Local = GetPID(frontDesiredTemp, newAvg_object_VDD, PforPID, IforPID, DforPID, &integral_VDD, &previous_error_VDD);
+							front_TR_PWM_Local = GetPID(frontDesiredTemp, newAvg_object_VDD, PforPID, IforPID, DforPID, &proportional_VDD, &integral_VDD, &derivative_VDD, &previous_error_VDD);
 							printLog("Integral_VDD is %lf \n\r", integral_VDD);
-							back_TR_PWM_Local = GetPID(backDesiredTemp, newAvg_object_GND, PforPID, IforPID, DforPID, &integral_GND, &previous_error_GND);
+							back_TR_PWM_Local = GetPID(backDesiredTemp, newAvg_object_GND, PforPID, IforPID, DforPID, &proportional_GND, &integral_GND, &derivative_GND, &previous_error_GND);
 							printLog("Integral_GND is %lf \n\r", integral_GND);
 
 							printLog("PforPID is %lf, IforPID is %lf, DforPID is %lf \n\r", PforPID,IforPID,DforPID);
 
+							sendPID_arr[0] = proportional_VDD;
+							sendPID_arr[1] = integral_VDD;
+							sendPID_arr[2] = derivative_VDD;
+							sendPID_arr[3] = proportional_GND;
+							sendPID_arr[4] = integral_GND;
+							sendPID_arr[5] = derivative_GND;
 
-
+							for(int i = 0; i < 6; i++) {
+								printLog("sendPID_arr%d is: %d;  ",i,sendPID_arr[i]);
+							};
+							printLog("\n\r");
 
 
 
@@ -629,12 +648,16 @@ void appMain(gecko_configuration_t *pconfig)
 		 ///////////////// 	SENDING DATA AS NOTIFICATIONS
 						 //// doesnt work without soft timer, needs to have a break to send the data
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_TimeStamp, 4, (const uint8*)&timeStampArr);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_sendPID_Characteristic, 6, (const uint8*)&sendPID_arr);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Front_TR_PWM_OUT, 1, (const uint8*)&front_TR_PWM_Out);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Back_TR_PWM_OUT, 1, (const uint8*)&back_TR_PWM_Out);
           		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_VDD, 3, (const uint8*)&object_hex_VDD);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_GND, 3, (const uint8*)&ambient_hex_GND);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Object_characteristic_GND, 3, (const uint8*)&object_hex_GND);
         		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
+        		       	gecko_cmd_gatt_server_send_characteristic_notification(0xFF,gattdb_Ambient_characteristic_VDD, 3, (const uint8*)&ambient_hex_VDD);
+
+
 
 
 
@@ -716,8 +739,8 @@ void appMain(gecko_configuration_t *pconfig)
                 }
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_DforPID_Characteristic){
                 	DforPID = 0;
-                    // NOTE, Scaling down the received range (0-100) to (0-5) by dividing by 20
-                	DforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /20 );
+                    // NOTE, Scaling down the received range (0-100) to (0-20) by dividing by 5
+                	DforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /5 );
                 	printLog("DforPID is %f \n\r", DforPID);
                 }
 
@@ -755,20 +778,20 @@ void appMain(gecko_configuration_t *pconfig)
   }
 }
 
-uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *integral, float *previous_error){
+uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar, float d_scalar, float *proportional,float *integral,float *derivative, float *previous_error){
 
 	printLog("Im here, set_point %f; object_t %f; p_scalar %f; i_scalar %f; d_scalar %f; integral %f; previous_error %f; \n\r",set_point, object_t, p_scalar, i_scalar, d_scalar, *
 			integral, *previous_error);
 	float error = set_point - object_t;
 	//printLog("error %f \n\r", error);
 
-	float proportional = (error * p_scalar);
+	*proportional = (error * p_scalar);
 	//printLog("proportional in_funct_1 %f \n\r", proportional);
 	
 	// Boundary if statements, as duty cycle can not be over 100 and below 0.
 	// IMPORTANT As uint8_t variable, proportional may overflow. If so, either 0 or 100 is assigned to it
-	if (error * p_scalar >  100) proportional = 100; // limit wind-up
-	if (error * p_scalar < 0) proportional = 0;
+	if (error * p_scalar >  100) *proportional = 100; // limit wind-up
+	if (error * p_scalar < 0) *proportional = 0;
 	//printLog("proportional in_funct_2 %f \n\r", proportional);
 
 	// calculate the integral component (summation of past errors * i scalar)
@@ -783,22 +806,22 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 	// calculate the derivative component (change since previous error * d scalar)
 	//printLog("previous_error in_funct_1 is %lf, ", *previous_error);
 
-	float derivative = (error - *previous_error) * d_scalar;
+	*derivative = (error - *previous_error) * d_scalar;
 	//printLog("derivative in_funct_1 is %lf, ", derivative);
 	*previous_error = error;
 	//printLog("previous_error in_funct_2 is %lf \n\r", *previous_error);
 
 
 
-	double resultingPID = proportional + *integral + derivative  ;
+	double resultingPID = *proportional + *integral + *derivative  ;
 	///printLog("resultingPID in_funct_1 is %lf, ", resultingPID);
 	// Limit
 	if(resultingPID >  100) resultingPID = 100;
 	if(resultingPID < 0) resultingPID = 0;
 	//printLog("resultingPID in_funct_2 is %lf \n\r", resultingPID);
 
-	printLog(" error is %f; proportional is %f; *integral is %f; derivative is %f; resultingPID is %f; \n\r",error, proportional, *integral,
-			derivative, resultingPID);
+	printLog(" error is %f; proportional is %f; *integral is %f; derivative is %f; resultingPID is %f; \n\r",error, *proportional, *integral,
+			*derivative, resultingPID);
 	return (int8_t)resultingPID ;
 }
 
