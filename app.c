@@ -115,7 +115,7 @@ float previous_error_GND = 0;
 float PforPID = 0;
 float IforPID = 0;
 float DforPID = 0;
-uint8_t sendPID_arr[6];
+int8_t sendPID_arr[6];
 
 
 
@@ -807,6 +807,8 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 	//printLog("previous_error in_funct_1 is %lf, ", *previous_error);
 
 	*derivative = (error - *previous_error) * d_scalar;
+	if(*derivative >  100) *derivative = 100; // limit wind-up
+	if(*derivative < -100) *derivative = -100;
 	//printLog("derivative in_funct_1 is %lf, ", derivative);
 	*previous_error = error;
 	//printLog("previous_error in_funct_2 is %lf \n\r", *previous_error);
@@ -818,6 +820,7 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 	// Limit
 	if(resultingPID >  100) resultingPID = 100;
 	if(resultingPID < 0) resultingPID = 0;
+
 	//printLog("resultingPID in_funct_2 is %lf \n\r", resultingPID);
 
 	printLog(" error is %f; proportional is %f; *integral is %f; derivative is %f; resultingPID is %f; \n\r",error, *proportional, *integral,
