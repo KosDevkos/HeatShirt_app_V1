@@ -101,9 +101,9 @@ static gecko_configuration_t config = {
 /**
  * @brief  Main function
  */
-int main(void)
+int main(void){
 
-{
+
   /* Initialize device */
   initMcu();
   /* Initialize board */

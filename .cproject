@@ -152,7 +152,7 @@
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 		</cconfiguration>
 	</storageModule>
-	<storageModule generalProj.esf.protocolIds="com.silabs.sdk.stack.super:2.6.3._1914562655.com.silabs.stack.ble:2.12.3.0_134876927" generalProj.esf.protocolNames="ble" moduleId="com.silabs.ss.framework.ide.project.core.cpp" project.generation="27" projectCommon.boardIds="brd4305a:0.0.0.A02" projectCommon.buildArtifactType="EXE" projectCommon.partId="mcu.arm.efr32.bg13.bgm13s32f512ga" projectCommon.sdkId="com.silabs.sdk.stack.super:2.6.3._1914562655"/>
+	<storageModule generalProj.esf.protocolIds="com.silabs.sdk.stack.super:2.6.3._1914562655.com.silabs.stack.ble:2.12.3.0_134876927" generalProj.esf.protocolNames="ble" moduleId="com.silabs.ss.framework.ide.project.core.cpp" project.generation="23" projectCommon.boardIds="brd4305a:0.0.0.A02" projectCommon.buildArtifactType="EXE" projectCommon.partId="mcu.arm.efr32.bg13.bgm13s32f512ga" projectCommon.sdkId="com.silabs.sdk.stack.super:2.6.3._1914562655"/>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="MLX90632_V1.com.silabs.ss.framework.ide.project.core.cdt.cdtMbsProjectType.1888309637" name="SLS CDT Project" projectType="com.silabs.ss.framework.ide.project.core.cdt.cdtMbsProjectType"/>
 	</storageModule>

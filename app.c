@@ -108,6 +108,10 @@ float integral_VDD = 0;
 float previous_error_VDD = 0;
 float integral_GND = 0;
 float previous_error_GND = 0;
+float PforPID = 0;
+float IforPID = 0;
+float DforPID = 0;
+
 
 
  //////////// MOVING AVARAGE FILTER var
@@ -203,10 +207,10 @@ void appMain(gecko_configuration_t *pconfig)
 	    /* Route pins to timer */
 	    // $[TIMER0 I/O setup]
 	    /* Set up CC0 */
-	    ///!!!TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
-	    ///!!!        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
+		///!!!TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
+		///!!!        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
 	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
-	            | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
+        | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
 	    TIMER0->ROUTEPEN = TIMER0->ROUTEPEN | TIMER_ROUTEPEN_CC0PEN;
 	    /* Set up CC1 */
 	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC1LOC_MASK))
@@ -593,8 +597,15 @@ void appMain(gecko_configuration_t *pconfig)
 
 
 							//front_TR_PWM_Local = GetPID(set_point, object_t, p_scalar, i_scalar, d_scalar, &integral, &previous_error);
-							front_TR_PWM_Local = GetPID(frontDesiredTemp, newAvg_object_VDD, 20, 0, 0, &integral_VDD, &previous_error_VDD);
-							back_TR_PWM_Local = GetPID(backDesiredTemp, newAvg_object_GND, 20, 0, 0, &integral_GND, &previous_error_GND);
+							front_TR_PWM_Local = GetPID(frontDesiredTemp, newAvg_object_VDD, PforPID, IforPID, DforPID, &integral_VDD, &previous_error_VDD);
+							printLog("Integral_VDD is %lf \n\r", integral_VDD);
+							back_TR_PWM_Local = GetPID(backDesiredTemp, newAvg_object_GND, PforPID, IforPID, DforPID, &integral_GND, &previous_error_GND);
+							printLog("Integral_GND is %lf \n\r", integral_GND);
+
+							printLog("PforPID is %lf, IforPID is %lf, DforPID is %lf \n\r", PforPID,IforPID,DforPID);
+
+
+
 
 
 
@@ -688,6 +699,29 @@ void appMain(gecko_configuration_t *pconfig)
                 	printLog("backDesiredTemp is %lf \n\r", backDesiredTemp);
                 }
                 
+
+
+
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_PforPID_Characteristic){
+                	PforPID = 0;
+                    // NOTE, Scaling down the received range (0-100) to (0-100) by dividing by 1
+                	PforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /1 );
+                	printLog("PforPID is %f \n\r", PforPID);
+                }
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_IforPID_Characteristic){
+                	IforPID = 0;
+                    // NOTE, Scaling down the received range (0-100) to (0-20) by dividing by 5
+                	IforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /5 );
+                	printLog("IforPID is %f \n\r", IforPID);
+                }
+                if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_DforPID_Characteristic){
+                	DforPID = 0;
+                    // NOTE, Scaling down the received range (0-100) to (0-5) by dividing by 20
+                	DforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /20 );
+                	printLog("DforPID is %f \n\r", DforPID);
+                }
+
+
                 break;
 
 
@@ -737,16 +771,35 @@ uint8_t GetPID(float set_point, double object_t, float p_scalar, float i_scalar,
 	if (error * p_scalar < 0) proportional = 0;
 
 	// calculate the integral component (summation of past errors * i scalar)
+	printLog("Integral in_funct_1 is %lf, ", *integral);
 	*integral += error * i_scalar;
-	if(*integral >  100) integral = 100; // limit wind-up
-	if(integral < 0) integral = 0;
+	printLog("Integral in_funct_2 is %lf, ", *integral);
+	if(*integral >  100) *integral = 100; // limit wind-up
+	if(*integral < 0) *integral = 0;
+	printLog("Integral in_funct_3 is %lf \n\r", *integral);
+
 
 	// calculate the derivative component (change since previous error * d scalar)
+	printLog("previous_error in_funct_1 is %lf, ", *previous_error);
 
 	float derivative = (error - *previous_error) * d_scalar;
+	printLog("derivative in_funct_1 is %lf, ", derivative);
 	*previous_error = error;
+	printLog("previous_error in_funct_2 is %lf \n\r", *previous_error);
 
-	return proportional /*  + integral + derivative  */ ;
+
+
+	double resultingPID = proportional + *integral + derivative  ;
+	printLog("resultingPID in_funct_1 is %lf, ", resultingPID);
+	// Limit
+	// Note, resultingPID is uit8 with max value of 256, so if variables are at their maximum value of 100, resultingPID will overflow.
+	// Hence, the sum is checked in the if statement instead of a value, whihc may overflow.
+	if(proportional + *integral + derivative >  100) resultingPID = 100;
+	if(proportional + *integral + derivative < 0) resultingPID = 0;
+	printLog("resultingPID in_funct_2 is %lf \n\r", resultingPID);
+
+
+	return (int8_t)resultingPID ;
 }
 
 
