@@ -739,8 +739,8 @@ void appMain(gecko_configuration_t *pconfig)
                 }
                 if (evt->data.evt_gatt_server_user_write_request.characteristic == gattdb_DforPID_Characteristic){
                 	DforPID = 0;
-                    // NOTE, Scaling down the received range (0-100) to (0-20) by dividing by 5
-                	DforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /5 );
+                    // NOTE, Scaling down the received range (0-100) to (0-100) by dividing by 1
+                	DforPID = (((float)((uint16_t) evt->data.evt_gatt_server_user_write_request.value.data[0]))  /1 );
                 	printLog("DforPID is %f \n\r", DforPID);
                 }
 
