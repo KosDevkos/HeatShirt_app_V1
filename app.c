@@ -213,10 +213,10 @@ void appMain(gecko_configuration_t *pconfig)
 	    /* Route pins to timer */
 	    // $[TIMER0 I/O setup]
 	    /* Set up CC0 */
+		TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
+		        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
 		///!!!TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
-		///!!!        | TIMER_ROUTELOC0_CC0LOC_LOC0;    /// set to location 0 (for P0)
-	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC0LOC_MASK))
-        | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
+		///!!! 		  | TIMER_ROUTELOC0_CC0LOC_LOC15;    /// set to location 0 (for PC10!!!!!!!!!)  P12 on dev board
 	    TIMER0->ROUTEPEN = TIMER0->ROUTEPEN | TIMER_ROUTEPEN_CC0PEN;
 	    /* Set up CC1 */
 	    TIMER0->ROUTELOC0 = (TIMER0->ROUTELOC0 & (~_TIMER_ROUTELOC0_CC1LOC_MASK))
